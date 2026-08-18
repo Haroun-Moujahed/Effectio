@@ -1,0 +1,102 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  color-scheme: dark;
+}
+
+:root,
+[data-theme='dark'] {
+  --bg: #05070b;
+  --bg-accent: rgba(61, 158, 255, 0.12);
+  --header-bg: #000;
+  --text: #eef3f8;
+  --text-muted: #8a9bb0;
+  --text-subtle: #6f8298;
+  --border: rgba(90, 140, 200, 0.14);
+  --border-strong: rgba(90, 140, 200, 0.18);
+  --card-bg: rgba(12, 16, 24, 0.92);
+  --cell-bg: #0b0f16;
+  --cell-hover: #121a27;
+  --cell-selected: #132033;
+  --cell-selected-border: #3d9eff;
+  --accent: #3d9eff;
+  --nav-bg: #10151e;
+  --nav-hover: #182233;
+  --progress-track: #24364c;
+  --progress-red: #f87171;
+  --progress-orange: #fb923c;
+  --progress-yellow: #facc15;
+  --progress-green-soft: #86efac;
+  --progress-green: #4ade80;
+  --input-bg: rgba(16, 21, 30, 0.9);
+  --input-border: rgba(90, 140, 200, 0.22);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --bg-accent: rgba(61, 158, 255, 0.08);
+  --header-bg: #ffffff;
+  --text: #152033;
+  --text-muted: #5f7088;
+  --text-subtle: #8a9bb0;
+  --border: rgba(90, 120, 160, 0.18);
+  --border-strong: rgba(90, 120, 160, 0.28);
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --cell-bg: #f8fafd;
+  --cell-hover: #eef3fa;
+  --cell-selected: #e8f3ff;
+  --cell-selected-border: #3d9eff;
+  --accent: #2563eb;
+  --nav-bg: #f1f5fb;
+  --nav-hover: #e6edf8;
+  --progress-track: #d7e2ef;
+  --progress-red: #dc2626;
+  --progress-orange: #ea580c;
+  --progress-yellow: #ca8a04;
+  --progress-green-soft: #65a30d;
+  --progress-green: #16a34a;
+  --input-bg: #f8fafd;
+  --input-border: rgba(90, 120, 160, 0.28);
+  --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Outfit, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+}
