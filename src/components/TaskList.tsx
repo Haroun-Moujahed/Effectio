@@ -9,6 +9,7 @@ import type { Task } from '../types'
 import { formatSelectedDate } from '../dates'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
+import { ConfirmModal } from './ConfirmModal'
 import taskIcon from '../assets/task-icon.png'
 import penIcon from '../assets/pen-icon.png'
 
@@ -36,11 +37,13 @@ export function TaskList({
   const [draft, setDraft] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  const [clearOpen, setClearOpen] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setEditingId(null)
     setEditText('')
+    setClearOpen(false)
   }, [date])
 
   useEffect(() => {
@@ -87,12 +90,6 @@ export function TaskList({
     }
   }
 
-  function handleClearAll() {
-    if (tasks.length === 0) return
-    if (!window.confirm(`Clear all ${tasks.length} tasks for this day?`)) return
-    onClearAll()
-  }
-
   const completed = tasks.filter((task) => task.completed).length
 
   return (
@@ -112,7 +109,7 @@ export function TaskList({
               <button
                 type="button"
                 className="tasks-clear"
-                onClick={handleClearAll}
+                onClick={() => setClearOpen(true)}
                 aria-label="Clear all tasks for this day"
               >
                 Clear all
@@ -210,6 +207,22 @@ export function TaskList({
           maxLength={120}
         />
       </form>
+
+      <ConfirmModal
+        open={clearOpen}
+        title="Clear all tasks?"
+        description={`This will permanently remove all ${tasks.length} task${
+          tasks.length === 1 ? '' : 's'
+        } for ${formatSelectedDate(date)}.`}
+        confirmLabel="Clear all"
+        cancelLabel="Keep tasks"
+        danger
+        onCancel={() => setClearOpen(false)}
+        onConfirm={() => {
+          setClearOpen(false)
+          onClearAll()
+        }}
+      />
     </section>
   )
 }

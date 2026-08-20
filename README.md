@@ -16,6 +16,7 @@ Calendar-based daily todos with cloud sync. Click a day to manage its list; each
 
 - React 19 + TypeScript + Vite
 - Supabase (Auth + Postgres)
+- Resend (auth email delivery)
 - Deployed on Vercel
 
 ## Local development
@@ -41,7 +42,8 @@ Without Supabase env vars, the app still runs using browser `localStorage` only.
    - **anon public** key → `VITE_SUPABASE_ANON_KEY`
 3. Go to **SQL Editor → New query**, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it.
 4. (Optional) **Authentication → Providers → Email**: keep Email enabled. For a personal app you can disable “Confirm email” under **Authentication → Sign In / Providers** if you want instant signup without an inbox check.
-5. Put the same two values in `.env.local` for local work.
+5. **Auth emails via Resend (free path):** follow [`emails/README.md`](emails/README.md). Use custom SMTP with sender `beth.t@example.com`, display name **Effectio**, and paste [`emails/confirm-signup.html`](emails/confirm-signup.html). This bypasses Supabase’s built-in 2 emails/hour limit.
+6. Put the same two API values in `.env.local` for local work.
 
 ## Deploy on Vercel
 
