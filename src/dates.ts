@@ -21,6 +21,10 @@ export function addMonths(date: Date, amount: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1)
 }
 
+export function addYears(date: Date, amount: number): Date {
+  return new Date(date.getFullYear() + amount, date.getMonth(), 1)
+}
+
 export function getCalendarDays(viewDate: Date): Date[] {
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -39,6 +43,10 @@ export function formatMonthTitle(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
+export function formatYearTitle(date: Date): string {
+  return String(date.getFullYear())
+}
+
 export function formatSelectedDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -46,6 +54,21 @@ export function formatSelectedDate(date: Date): string {
     day: 'numeric',
   })
 }
+
+export const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
 
 export const WEEKDAYS = [
   { full: 'Monday', short: 'Mon' },

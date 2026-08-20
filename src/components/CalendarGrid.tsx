@@ -1,112 +1,170 @@
 import type { DayProgress } from '../types'
 import {
+  MONTHS,
   WEEKDAYS,
   formatMonthTitle,
+  formatYearTitle,
   getCalendarDays,
   isSameDay,
   isSameMonth,
 } from '../dates'
 import { ProgressRing } from './ProgressRing'
+import { Tooltip } from './Tooltip'
+
+export type CalendarMode = 'month' | 'year'
 
 type CalendarGridProps = {
+  mode: CalendarMode
   viewDate: Date
   selected: Date
   today: Date
   tasksOpen: boolean
   onSelect: (date: Date) => void
-  onPrevMonth: () => void
-  onNextMonth: () => void
+  onPrev: () => void
+  onNext: () => void
+  onOpenYearView: () => void
+  onSelectMonth: (monthIndex: number) => void
   getProgress: (date: Date) => DayProgress
 }
 
 export function CalendarGrid({
+  mode,
   viewDate,
   selected,
   today,
   tasksOpen,
   onSelect,
-  onPrevMonth,
-  onNextMonth,
+  onPrev,
+  onNext,
+  onOpenYearView,
+  onSelectMonth,
   getProgress,
 }: CalendarGridProps) {
   const days = getCalendarDays(viewDate)
   const weekRows = days.length / 7
+  const isYear = mode === 'year'
 
   return (
     <section className="calendar-card">
       <div className="month-nav">
-        <button
-          type="button"
-          className="nav-btn"
-          onClick={onPrevMonth}
-          aria-label="Previous month"
-        >
-          <Chevron direction="left" />
-        </button>
-        <h2>{formatMonthTitle(viewDate)}</h2>
-        <button
-          type="button"
-          className="nav-btn"
-          onClick={onNextMonth}
-          aria-label="Next month"
-        >
-          <Chevron direction="right" />
-        </button>
-      </div>
+        <Tooltip label={isYear ? 'Previous year' : 'Previous month'} placement="bottom">
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={onPrev}
+            aria-label={isYear ? 'Previous year' : 'Previous month'}
+          >
+            <Chevron direction="left" />
+          </button>
+        </Tooltip>
 
-      <div className="weekday-row">
-        {WEEKDAYS.map((day) => (
-          <div key={day.full} className="weekday">
-            <span className="weekday-full">{day.full}</span>
-            <span className="weekday-short">{day.short}</span>
-          </div>
-        ))}
-      </div>
-
-      <div
-        className="day-grid"
-        style={{ ['--week-rows' as string]: String(weekRows) }}
-      >
-        {days.map((date) => {
-          const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-          const progress = getProgress(date)
-          const outside = !isSameMonth(date, viewDate)
-          const selectedDay = tasksOpen && isSameDay(date, selected)
-          const isToday = isSameDay(date, today)
-
-          return (
+        {isYear ? (
+          <h2 className="calendar-title">{formatYearTitle(viewDate)}</h2>
+        ) : (
+          <Tooltip label="Show year view" placement="bottom">
             <button
-              key={key}
               type="button"
-              className={[
-                'day-cell',
-                outside ? 'is-outside' : '',
-                selectedDay ? 'is-selected' : '',
-                isToday ? 'is-today' : '',
-              ].join(' ')}
-              onClick={() => onSelect(date)}
-              aria-label={`${date.toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}${
-                progress.total
-                  ? `, ${progress.percent}% complete`
-                  : ', no tasks'
-              }`}
-              aria-pressed={selectedDay}
+              className="calendar-title-btn"
+              onClick={onOpenYearView}
+              aria-label={`Open year view for ${formatYearTitle(viewDate)}`}
             >
-              <span className="day-number">
-                {String(date.getDate()).padStart(2, '0')}
-              </span>
-              <ProgressRing
-                percent={progress.percent}
-                hasTasks={progress.total > 0}
-              />
+              {formatMonthTitle(viewDate)}
             </button>
-          )
-        })}
+          </Tooltip>
+        )}
+
+        <Tooltip label={isYear ? 'Next year' : 'Next month'} placement="bottom">
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={onNext}
+            aria-label={isYear ? 'Next year' : 'Next month'}
+          >
+            <Chevron direction="right" />
+          </button>
+        </Tooltip>
       </div>
+
+      {isYear ? (
+        <div className="year-grid">
+          {MONTHS.map((month, index) => {
+            const monthDate = new Date(viewDate.getFullYear(), index, 1)
+            const isCurrentMonth = isSameMonth(monthDate, today)
+            const isViewMonth = isSameMonth(monthDate, selected)
+
+            return (
+              <button
+                key={month}
+                type="button"
+                className={[
+                  'year-month-cell',
+                  isCurrentMonth ? 'is-current' : '',
+                  isViewMonth ? 'is-selected' : '',
+                ].join(' ')}
+                onClick={() => onSelectMonth(index)}
+              >
+                <span className="year-month-name">{month}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <>
+          <div className="weekday-row">
+            {WEEKDAYS.map((day) => (
+              <div key={day.full} className="weekday">
+                <span className="weekday-full">{day.full}</span>
+                <span className="weekday-short">{day.short}</span>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="day-grid"
+            style={{ ['--week-rows' as string]: String(weekRows) }}
+          >
+            {days.map((date) => {
+              const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+              const progress = getProgress(date)
+              const outside = !isSameMonth(date, viewDate)
+              const selectedDay = tasksOpen && isSameDay(date, selected)
+              const isToday = isSameDay(date, today)
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={[
+                    'day-cell',
+                    outside ? 'is-outside' : '',
+                    selectedDay ? 'is-selected' : '',
+                    isToday ? 'is-today' : '',
+                  ].join(' ')}
+                  onClick={() => onSelect(date)}
+                  aria-label={`${date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}${
+                    progress.total
+                      ? `, ${progress.percent}% complete`
+                      : ', no tasks'
+                  }`}
+                  aria-pressed={selectedDay}
+                >
+                  <span className="day-number">
+                    {String(date.getDate()).padStart(2, '0')}
+                  </span>
+                  <ProgressRing
+                    percent={progress.percent}
+                    hasTasks={progress.total > 0}
+                  />
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
     </section>
   )
 }

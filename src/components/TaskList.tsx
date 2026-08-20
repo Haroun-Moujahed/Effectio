@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import type { Task } from '../types'
 import { formatSelectedDate } from '../dates'
 import { MaskedIcon } from './MaskedIcon'
+import { Tooltip } from './Tooltip'
 import taskIcon from '../assets/task-icon.png'
 import penIcon from '../assets/pen-icon.png'
 
@@ -12,6 +19,7 @@ type TaskListProps = {
   onToggle: (id: string) => void
   onUpdate: (id: string, text: string) => void
   onDelete: (id: string) => void
+  onClearAll: () => void
   onClose: () => void
 }
 
@@ -22,6 +30,7 @@ export function TaskList({
   onToggle,
   onUpdate,
   onDelete,
+  onClearAll,
   onClose,
 }: TaskListProps) {
   const [draft, setDraft] = useState('')
@@ -78,6 +87,12 @@ export function TaskList({
     }
   }
 
+  function handleClearAll() {
+    if (tasks.length === 0) return
+    if (!window.confirm(`Clear all ${tasks.length} tasks for this day?`)) return
+    onClearAll()
+  }
+
   const completed = tasks.filter((task) => task.completed).length
 
   return (
@@ -91,14 +106,30 @@ export function TaskList({
               : `${completed} of ${tasks.length} completed`}
           </p>
         </div>
-        <button
-          type="button"
-          className="tasks-close"
-          onClick={onClose}
-          aria-label="Close task list"
-        >
-          <CloseIcon />
-        </button>
+        <div className="tasks-heading-actions">
+          {tasks.length > 0 ? (
+            <Tooltip label="Clear all tasks" placement="bottom">
+              <button
+                type="button"
+                className="tasks-clear"
+                onClick={handleClearAll}
+                aria-label="Clear all tasks for this day"
+              >
+                Clear all
+              </button>
+            </Tooltip>
+          ) : null}
+          <Tooltip label="Close task list" placement="left">
+            <button
+              type="button"
+              className="tasks-close"
+              onClick={onClose}
+              aria-label="Close task list"
+            >
+              <CloseIcon />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="tasks-body">
@@ -141,22 +172,26 @@ export function TaskList({
                   )}
 
                   <div className="task-actions">
-                    <button
-                      type="button"
-                      className="task-action"
-                      onClick={() => startEdit(task)}
-                      aria-label={`Update "${task.text}"`}
-                    >
-                      <MaskedIcon src={taskIcon} />
-                    </button>
-                    <button
-                      type="button"
-                      className="task-action task-delete"
-                      onClick={() => onDelete(task.id)}
-                      aria-label={`Delete "${task.text}"`}
-                    >
-                      ×
-                    </button>
+                    <Tooltip label="Edit task" placement="top">
+                      <button
+                        type="button"
+                        className="task-action"
+                        onClick={() => startEdit(task)}
+                        aria-label={`Update "${task.text}"`}
+                      >
+                        <MaskedIcon src={taskIcon} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip label="Delete task" placement="top">
+                      <button
+                        type="button"
+                        className="task-action task-delete"
+                        onClick={() => onDelete(task.id)}
+                        aria-label={`Delete "${task.text}"`}
+                      >
+                        ×
+                      </button>
+                    </Tooltip>
                   </div>
                 </li>
               )
@@ -186,7 +221,7 @@ function TickIcon() {
         d="M5 10.5 8.2 13.7 15 6.8"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

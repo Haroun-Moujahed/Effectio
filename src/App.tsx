@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Header } from './components/Header'
-import { CalendarGrid } from './components/CalendarGrid'
+import { CalendarGrid, type CalendarMode } from './components/CalendarGrid'
 import { TaskList } from './components/TaskList'
 import { AuthScreen } from './components/AuthScreen'
 import { useAuthSession } from './useAuthSession'
-import { addMonths, dateKey, isSameMonth } from './dates'
+import { addMonths, addYears, dateKey, isSameMonth } from './dates'
 import {
   hydrateTasks,
   loadLocalTasks,
@@ -20,10 +20,24 @@ applyTheme(loadTheme())
 
 const SAVE_DEBOUNCE_MS = 400
 
+function getUserDisplayName(user: {
+  email?: string | null
+  user_metadata?: Record<string, unknown>
+} | null): string | null {
+  if (!user) return null
+  const meta = user.user_metadata ?? {}
+  const fullName = meta.full_name
+  if (typeof fullName === 'string' && fullName.trim()) return fullName.trim()
+  const name = meta.name
+  if (typeof name === 'string' && name.trim()) return name.trim()
+  return user.email ?? null
+}
+
 export default function App() {
   const { session, user, ready, signOut } = useAuthSession()
   const today = useMemo(() => new Date(), [])
   const [theme, setTheme] = useState<Theme>(loadTheme)
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('month')
   const [viewDate, setViewDate] = useState(() => new Date())
   const [selected, setSelected] = useState(() => new Date())
   const [tasksOpen, setTasksOpen] = useState(false)
@@ -32,6 +46,9 @@ export default function App() {
   const [syncError, setSyncError] = useState<string | null>(null)
   const skipNextSave = useRef(true)
   const activeUserId = useRef<string | null>(null)
+
+  const userName = getUserDisplayName(user)
+  const userEmail = user?.email ?? null
 
   useEffect(() => {
     if (!ready) return
@@ -51,7 +68,6 @@ export default function App() {
       return
     }
 
-    // Switching accounts: wipe in-memory calendar immediately so nothing leaks
     if (activeUserId.current !== user.id) {
       activeUserId.current = user.id
       setTasksByDate({})
@@ -140,7 +156,8 @@ export default function App() {
         <Header
           theme={theme}
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
-          userEmail={user?.email}
+          userName={userName}
+          userEmail={userEmail}
           onSignOut={signOut}
         />
         <div className="boot-screen">Loading your tasks…</div>
@@ -200,12 +217,40 @@ export default function App() {
     updateSelected((tasks) => tasks.filter((task) => task.id !== id))
   }
 
+  function clearAllTasks() {
+    updateSelected(() => [])
+  }
+
   function handleSelectDay(date: Date) {
     setSelected(date)
     setTasksOpen(true)
+    setCalendarMode('month')
     if (!isSameMonth(date, viewDate)) {
       setViewDate(date)
     }
+  }
+
+  function handleOpenYearView() {
+    setCalendarMode('year')
+    setTasksOpen(false)
+  }
+
+  function handleSelectMonth(monthIndex: number) {
+    const next = new Date(viewDate.getFullYear(), monthIndex, 1)
+    setViewDate(next)
+    setCalendarMode('month')
+  }
+
+  function handleCalendarPrev() {
+    setViewDate((current) =>
+      calendarMode === 'year' ? addYears(current, -1) : addMonths(current, -1),
+    )
+  }
+
+  function handleCalendarNext() {
+    setViewDate((current) =>
+      calendarMode === 'year' ? addYears(current, 1) : addMonths(current, 1),
+    )
   }
 
   return (
@@ -213,7 +258,8 @@ export default function App() {
       <Header
         theme={theme}
         onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
-        userEmail={user?.email}
+        userName={userName}
+        userEmail={userEmail}
         onSignOut={isSupabaseConfigured ? signOut : undefined}
       />
       {syncError ? (
@@ -227,13 +273,16 @@ export default function App() {
       <main className="app-main">
         <div className={`workspace ${tasksOpen ? 'tasks-open' : ''}`}>
           <CalendarGrid
+            mode={calendarMode}
             viewDate={viewDate}
             selected={selected}
             today={today}
             tasksOpen={tasksOpen}
             onSelect={handleSelectDay}
-            onPrevMonth={() => setViewDate((current) => addMonths(current, -1))}
-            onNextMonth={() => setViewDate((current) => addMonths(current, 1))}
+            onPrev={handleCalendarPrev}
+            onNext={handleCalendarNext}
+            onOpenYearView={handleOpenYearView}
+            onSelectMonth={handleSelectMonth}
             getProgress={getProgress}
           />
           <aside className={`tasks-panel ${tasksOpen ? 'is-open' : ''}`}>
@@ -244,6 +293,7 @@ export default function App() {
               onToggle={toggleTask}
               onUpdate={updateTask}
               onDelete={deleteTask}
+              onClearAll={clearAllTasks}
               onClose={() => setTasksOpen(false)}
             />
           </aside>
