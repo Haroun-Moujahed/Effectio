@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
@@ -9,13 +10,13 @@ import type { Task } from '../types'
 import { formatSelectedDate } from '../dates'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
-import { ConfirmModal } from './ConfirmModal'
 import taskIcon from '../assets/task-icon.png'
 import penIcon from '../assets/pen-icon.png'
 
 type TaskListProps = {
   date: Date
   tasks: Task[]
+  open: boolean
   onAdd: (text: string) => void
   onToggle: (id: string) => void
   onUpdate: (id: string, text: string) => void
@@ -24,9 +25,12 @@ type TaskListProps = {
   onClose: () => void
 }
 
+const REVEAL_MS = 320
+
 export function TaskList({
   date,
   tasks,
+  open,
   onAdd,
   onToggle,
   onUpdate,
@@ -38,7 +42,11 @@ export function TaskList({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [clearOpen, setClearOpen] = useState(false)
+  const [contentReady, setContentReady] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
+  const clearTitleId = useId()
+  const clearDescId = useId()
+  const clearConfirmRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setEditingId(null)
@@ -47,11 +55,40 @@ export function TaskList({
   }, [date])
 
   useEffect(() => {
+    if (!open) {
+      setContentReady(false)
+      setClearOpen(false)
+      return
+    }
+
+    setContentReady(false)
+    const timer = window.setTimeout(() => setContentReady(true), REVEAL_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, date])
+
+  useEffect(() => {
     if (editingId) {
       editInputRef.current?.focus()
       editInputRef.current?.select()
     }
   }, [editingId])
+
+  useEffect(() => {
+    if (!clearOpen) return
+    clearConfirmRef.current?.focus()
+
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setClearOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [clearOpen])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -91,138 +128,178 @@ export function TaskList({
   }
 
   const completed = tasks.filter((task) => task.completed).length
+  const showSkeleton = open && !contentReady
 
   return (
     <section className="tasks-card">
-      <div className="tasks-heading">
-        <div>
-          <h2>{formatSelectedDate(date)}</h2>
-          <p>
-            {tasks.length === 0
-              ? 'No tasks yet'
-              : `${completed} of ${tasks.length} completed`}
-          </p>
+      {showSkeleton ? (
+        <div className="tasks-skeleton" aria-hidden="true">
+          <div className="tasks-skeleton-heading">
+            <div className="tasks-skeleton-line is-title" />
+            <div className="tasks-skeleton-line is-sub" />
+          </div>
+          <div className="tasks-skeleton-body">
+            <div className="tasks-skeleton-line" />
+            <div className="tasks-skeleton-line" />
+            <div className="tasks-skeleton-line is-short" />
+          </div>
+          <div className="tasks-skeleton-form" />
         </div>
-        <div className="tasks-heading-actions">
-          {tasks.length > 0 ? (
-            <Tooltip label="Clear all tasks" placement="bottom">
-              <button
-                type="button"
-                className="tasks-clear"
-                onClick={() => setClearOpen(true)}
-                aria-label="Clear all tasks for this day"
-              >
-                Clear all
-              </button>
-            </Tooltip>
-          ) : null}
-          <Tooltip label="Close task list" placement="left">
-            <button
-              type="button"
-              className="tasks-close"
-              onClick={onClose}
-              aria-label="Close task list"
-            >
-              <CloseIcon />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className="tasks-body">
-        {tasks.length === 0 ? (
-          <p className="empty-hint">Add something you want to get done today.</p>
-        ) : (
-          <ul className="task-list">
-            {tasks.map((task) => {
-              const isEditing = editingId === task.id
-
-              return (
-                <li key={task.id} className={task.completed ? 'is-done' : ''}>
+      ) : (
+        <>
+          <div className="tasks-heading">
+            <div>
+              <h2>{formatSelectedDate(date)}</h2>
+              <p>
+                {tasks.length === 0
+                  ? 'No tasks yet'
+                  : `${completed} of ${tasks.length} completed`}
+              </p>
+            </div>
+            <div className="tasks-heading-actions">
+              {tasks.length > 0 ? (
+                <Tooltip label="Clear all tasks" placement="bottom">
                   <button
                     type="button"
-                    className="task-check"
-                    onClick={() => onToggle(task.id)}
-                    aria-pressed={task.completed}
-                    aria-label={
-                      task.completed
-                        ? `Mark "${task.text}" as incomplete`
-                        : `Mark "${task.text}" as complete`
-                    }
+                    className="tasks-clear"
+                    onClick={() => setClearOpen(true)}
+                    aria-label="Clear all tasks for this day"
                   >
-                    <TickIcon />
+                    Clear all
                   </button>
+                </Tooltip>
+              ) : null}
+              <Tooltip label="Close task list" placement="left">
+                <button
+                  type="button"
+                  className="tasks-close"
+                  onClick={onClose}
+                  aria-label="Close task list"
+                >
+                  <CloseIcon />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
 
-                  {isEditing ? (
-                    <input
-                      ref={editInputRef}
-                      className="task-edit-input"
-                      value={editText}
-                      onChange={(event) => setEditText(event.target.value)}
-                      onBlur={commitEdit}
-                      onKeyDown={handleEditKeyDown}
-                      aria-label="Update task"
-                      maxLength={120}
-                    />
-                  ) : (
-                    <span className="task-text">{task.text}</span>
-                  )}
+          <div className="tasks-body">
+            {tasks.length === 0 ? (
+              <p className="empty-hint">Add something you want to get done today.</p>
+            ) : (
+              <ul className="task-list">
+                {tasks.map((task) => {
+                  const isEditing = editingId === task.id
 
-                  <div className="task-actions">
-                    <Tooltip label="Edit task" placement="top">
+                  return (
+                    <li key={task.id} className={task.completed ? 'is-done' : ''}>
                       <button
                         type="button"
-                        className="task-action"
-                        onClick={() => startEdit(task)}
-                        aria-label={`Update "${task.text}"`}
+                        className="task-check"
+                        onClick={() => onToggle(task.id)}
+                        aria-pressed={task.completed}
+                        aria-label={
+                          task.completed
+                            ? `Mark "${task.text}" as incomplete`
+                            : `Mark "${task.text}" as complete`
+                        }
                       >
-                        <MaskedIcon src={taskIcon} />
+                        <TickIcon />
                       </button>
-                    </Tooltip>
-                    <Tooltip label="Delete task" placement="top">
-                      <button
-                        type="button"
-                        className="task-action task-delete"
-                        onClick={() => onDelete(task.id)}
-                        aria-label={`Delete "${task.text}"`}
-                      >
-                        ×
-                      </button>
-                    </Tooltip>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
 
-      <form className="task-form" onSubmit={handleSubmit}>
-        <MaskedIcon src={penIcon} className="task-form-icon" />
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Enter new task"
-          aria-label="Enter new task"
-          maxLength={120}
-        />
-      </form>
+                      {isEditing ? (
+                        <input
+                          ref={editInputRef}
+                          className="task-edit-input"
+                          value={editText}
+                          onChange={(event) => setEditText(event.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={handleEditKeyDown}
+                          aria-label="Update task"
+                          maxLength={120}
+                        />
+                      ) : (
+                        <span className="task-text">{task.text}</span>
+                      )}
 
-      <ConfirmModal
-        open={clearOpen}
-        title="Clear all tasks?"
-        description={`This will permanently remove all ${tasks.length} task${
-          tasks.length === 1 ? '' : 's'
-        } for ${formatSelectedDate(date)}.`}
-        confirmLabel="Clear all"
-        cancelLabel="Keep tasks"
-        danger
-        onCancel={() => setClearOpen(false)}
-        onConfirm={() => {
-          setClearOpen(false)
-          onClearAll()
-        }}
-      />
+                      <div className="task-actions">
+                        <Tooltip label="Edit task" placement="top">
+                          <button
+                            type="button"
+                            className="task-action"
+                            onClick={() => startEdit(task)}
+                            aria-label={`Update "${task.text}"`}
+                          >
+                            <MaskedIcon src={taskIcon} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip label="Delete task" placement="top">
+                          <button
+                            type="button"
+                            className="task-action task-delete"
+                            onClick={() => onDelete(task.id)}
+                            aria-label={`Delete "${task.text}"`}
+                          >
+                            ×
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+
+          <form className="task-form" onSubmit={handleSubmit}>
+            <MaskedIcon src={penIcon} className="task-form-icon" />
+            <input
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Enter new task"
+              aria-label="Enter new task"
+              maxLength={120}
+            />
+          </form>
+        </>
+      )}
+
+      {clearOpen ? (
+        <div
+          className="tasks-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby={clearTitleId}
+          aria-describedby={clearDescId}
+        >
+          <h2 id={clearTitleId} className="tasks-confirm-title">
+            Clear all tasks?
+          </h2>
+          <p id={clearDescId} className="tasks-confirm-description">
+            This will permanently remove all {tasks.length} task
+            {tasks.length === 1 ? '' : 's'} for {formatSelectedDate(date)}.
+          </p>
+          <div className="tasks-confirm-actions">
+            <button
+              type="button"
+              className="modal-btn modal-btn-secondary"
+              onClick={() => setClearOpen(false)}
+            >
+              Keep tasks
+            </button>
+            <button
+              ref={clearConfirmRef}
+              type="button"
+              className="modal-btn modal-btn-primary is-danger"
+              onClick={() => {
+                setClearOpen(false)
+                onClearAll()
+              }}
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

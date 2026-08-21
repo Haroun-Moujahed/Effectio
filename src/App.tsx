@@ -289,6 +289,7 @@ export default function App() {
             <TaskList
               date={selected}
               tasks={selectedTasks}
+              open={tasksOpen}
               onAdd={addTask}
               onToggle={toggleTask}
               onUpdate={updateTask}

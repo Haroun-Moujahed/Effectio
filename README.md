@@ -42,7 +42,7 @@ Without Supabase env vars, the app still runs using browser `localStorage` only.
    - **anon public** key → `VITE_SUPABASE_ANON_KEY`
 3. Go to **SQL Editor → New query**, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it.
 4. (Optional) **Authentication → Providers → Email**: keep Email enabled. For a personal app you can disable “Confirm email” under **Authentication → Sign In / Providers** if you want instant signup without an inbox check.
-5. **Auth emails via Resend (free path):** follow [`emails/README.md`](emails/README.md). Use custom SMTP with sender `beth.t@example.com`, display name **Effectio**, and paste [`emails/confirm-signup.html`](emails/confirm-signup.html). This bypasses Supabase’s built-in 2 emails/hour limit.
+5. **Auth emails via Resend:** follow [`emails/README.md`](emails/README.md). Verify domain **`effectio.space`** in Resend, then set Supabase SMTP sender to `noreply@effectio.space` (display name **Effectio**) and paste [`emails/confirm-signup.html`](emails/confirm-signup.html). This bypasses Supabase’s built-in 2 emails/hour limit.
 6. Put the same two API values in `.env.local` for local work.
 
 ## Deploy on Vercel
@@ -56,10 +56,10 @@ Without Supabase env vars, the app still runs using browser `localStorage` only.
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`  
    (same values as in `.env.local`)
-5. Deploy. You will get a URL like `https://effectio.vercel.app`.
+5. Deploy. You will get a URL like `https://effectio.vercel.app`. Optionally add custom domain `effectio.space` in Vercel → Domains.
 6. In Supabase → **Authentication → URL Configuration**:
-   - **Site URL:** your Vercel URL
-   - **Redirect URLs:** add `https://your-app.vercel.app/**` (and `http://localhost:5173/**` for local dev)
+   - **Site URL:** `https://effectio.space` (or `https://effectio.vercel.app` until the custom domain is live)
+   - **Redirect URLs:** add `https://effectio.space/**`, `https://www.effectio.space/**`, `https://effectio.vercel.app/**`, and `http://localhost:5173/**`
 
 After deploy, open the link, create an account, and your tasks will sync everywhere you sign in.
 
