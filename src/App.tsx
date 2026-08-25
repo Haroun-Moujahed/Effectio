@@ -3,17 +3,22 @@ import { Header } from './components/Header'
 import { CalendarGrid, type CalendarMode } from './components/CalendarGrid'
 import { TaskList } from './components/TaskList'
 import { AuthScreen } from './components/AuthScreen'
+import { Sidebar } from './components/Sidebar'
+import { BacklogPage } from './components/BacklogPage'
+import { AssignDateDialog } from './components/AssignDateDialog'
 import { useAuthSession } from './useAuthSession'
 import { addMonths, addYears, dateKey, isSameMonth } from './dates'
 import {
   hydrateTasks,
   loadLocalTasks,
+  loadSidebarCollapsed,
   saveCloudTasks,
   saveLocalTasks,
+  saveSidebarCollapsed,
 } from './storage'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { isSupabaseConfigured } from './lib/supabase'
-import type { DayProgress, Task, TasksByDate } from './types'
+import type { AppView, DayProgress, Task, TasksByDate } from './types'
 import './App.css'
 
 applyTheme(loadTheme())
@@ -37,13 +42,17 @@ export default function App() {
   const { session, user, ready, signOut } = useAuthSession()
   const today = useMemo(() => new Date(), [])
   const [theme, setTheme] = useState<Theme>(loadTheme)
+  const [activeView, setActiveView] = useState<AppView>('calendar')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('month')
   const [viewDate, setViewDate] = useState(() => new Date())
   const [selected, setSelected] = useState(() => new Date())
   const [tasksOpen, setTasksOpen] = useState(false)
   const [tasksByDate, setTasksByDate] = useState<TasksByDate>({})
+  const [backlog, setBacklog] = useState<Task[]>([])
   const [tasksReady, setTasksReady] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [assignTaskId, setAssignTaskId] = useState<string | null>(null)
   const skipNextSave = useRef(true)
   const activeUserId = useRef<string | null>(null)
 
@@ -54,7 +63,9 @@ export default function App() {
     if (!ready) return
 
     if (!isSupabaseConfigured) {
-      setTasksByDate(loadLocalTasks())
+      const local = loadLocalTasks()
+      setTasksByDate(local.byDate)
+      setBacklog(local.backlog)
       setTasksReady(true)
       skipNextSave.current = true
       return
@@ -63,6 +74,7 @@ export default function App() {
     if (!user) {
       activeUserId.current = null
       setTasksByDate({})
+      setBacklog([])
       setTasksReady(false)
       setTasksOpen(false)
       return
@@ -71,6 +83,7 @@ export default function App() {
     if (activeUserId.current !== user.id) {
       activeUserId.current = user.id
       setTasksByDate({})
+      setBacklog([])
       setTasksReady(false)
       setTasksOpen(false)
     }
@@ -82,14 +95,17 @@ export default function App() {
       .then((tasks) => {
         if (cancelled || activeUserId.current !== user.id) return
         skipNextSave.current = true
-        setTasksByDate(tasks)
+        setTasksByDate(tasks.byDate)
+        setBacklog(tasks.backlog)
         setTasksReady(true)
       })
       .catch((err) => {
         if (cancelled || activeUserId.current !== user.id) return
         setSyncError(err instanceof Error ? err.message : 'Failed to load tasks.')
         skipNextSave.current = true
-        setTasksByDate(loadLocalTasks(user.id))
+        const local = loadLocalTasks(user.id)
+        setTasksByDate(local.byDate)
+        setBacklog(local.backlog)
         setTasksReady(true)
       })
 
@@ -101,10 +117,12 @@ export default function App() {
   useEffect(() => {
     if (!tasksReady) return
 
+    const payload = { byDate: tasksByDate, backlog }
+
     if (isSupabaseConfigured && user) {
-      saveLocalTasks(tasksByDate, user.id)
+      saveLocalTasks(payload, user.id)
     } else if (!isSupabaseConfigured) {
-      saveLocalTasks(tasksByDate)
+      saveLocalTasks(payload)
     }
 
     if (skipNextSave.current) {
@@ -117,18 +135,22 @@ export default function App() {
     const userId = user.id
     const timer = window.setTimeout(() => {
       if (activeUserId.current !== userId) return
-      saveCloudTasks(userId, tasksByDate).catch((err) => {
+      saveCloudTasks(userId, payload).catch((err) => {
         setSyncError(err instanceof Error ? err.message : 'Failed to save tasks.')
       })
     }, SAVE_DEBOUNCE_MS)
 
     return () => window.clearTimeout(timer)
-  }, [tasksByDate, tasksReady, user])
+  }, [tasksByDate, backlog, tasksReady, user])
 
   useEffect(() => {
     applyTheme(theme)
     saveTheme(theme)
   }, [theme])
+
+  useEffect(() => {
+    saveSidebarCollapsed(sidebarCollapsed)
+  }, [sidebarCollapsed])
 
   if (!ready) {
     return (
@@ -167,6 +189,9 @@ export default function App() {
 
   const selectedKey = dateKey(selected)
   const selectedTasks = tasksByDate[selectedKey] ?? []
+  const assignTask = assignTaskId
+    ? backlog.find((task) => task.id === assignTaskId) ?? null
+    : null
 
   function getProgress(date: Date): DayProgress {
     const tasks = tasksByDate[dateKey(date)] ?? []
@@ -221,6 +246,55 @@ export default function App() {
     updateSelected(() => [])
   }
 
+  function addBacklogTask(text: string) {
+    setBacklog((current) => [
+      ...current,
+      { id: crypto.randomUUID(), text, completed: false },
+    ])
+  }
+
+  function toggleBacklogTask(id: string) {
+    setBacklog((current) =>
+      current.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task,
+      ),
+    )
+  }
+
+  function updateBacklogTask(id: string, text: string) {
+    setBacklog((current) =>
+      current.map((task) => (task.id === id ? { ...task, text } : task)),
+    )
+  }
+
+  function deleteBacklogTask(id: string) {
+    setBacklog((current) => current.filter((task) => task.id !== id))
+  }
+
+  function assignBacklogTaskToDay(date: Date) {
+    if (!assignTaskId) return
+    const task = backlog.find((item) => item.id === assignTaskId)
+    if (!task) {
+      setAssignTaskId(null)
+      return
+    }
+
+    const key = dateKey(date)
+    setBacklog((current) => current.filter((item) => item.id !== assignTaskId))
+    setTasksByDate((current) => ({
+      ...current,
+      [key]: [...(current[key] ?? []), task],
+    }))
+    setAssignTaskId(null)
+    setActiveView('calendar')
+    setSelected(date)
+    setTasksOpen(true)
+    setCalendarMode('month')
+    if (!isSameMonth(date, viewDate)) {
+      setViewDate(date)
+    }
+  }
+
   function handleSelectDay(date: Date) {
     setSelected(date)
     setTasksOpen(true)
@@ -253,6 +327,13 @@ export default function App() {
     )
   }
 
+  function handleSelectView(view: AppView) {
+    setActiveView(view)
+    if (view === 'backlog') {
+      setTasksOpen(false)
+    }
+  }
+
   return (
     <div className="app">
       <Header
@@ -270,36 +351,62 @@ export default function App() {
           </button>
         </div>
       ) : null}
-      <main className="app-main">
-        <div className={`workspace ${tasksOpen ? 'tasks-open' : ''}`}>
-          <CalendarGrid
-            mode={calendarMode}
-            viewDate={viewDate}
-            selected={selected}
-            today={today}
-            tasksOpen={tasksOpen}
-            onSelect={handleSelectDay}
-            onPrev={handleCalendarPrev}
-            onNext={handleCalendarNext}
-            onOpenYearView={handleOpenYearView}
-            onSelectMonth={handleSelectMonth}
-            getProgress={getProgress}
-          />
-          <aside className={`tasks-panel ${tasksOpen ? 'is-open' : ''}`}>
-            <TaskList
-              date={selected}
-              tasks={selectedTasks}
-              open={tasksOpen}
-              onAdd={addTask}
-              onToggle={toggleTask}
-              onUpdate={updateTask}
-              onDelete={deleteTask}
-              onClearAll={clearAllTasks}
-              onClose={() => setTasksOpen(false)}
+      <div className="app-body">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          activeView={activeView}
+          onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+          onSelectView={handleSelectView}
+        />
+        <main className="app-main">
+          {activeView === 'calendar' ? (
+            <div className={`workspace ${tasksOpen ? 'tasks-open' : ''}`}>
+              <CalendarGrid
+                mode={calendarMode}
+                viewDate={viewDate}
+                selected={selected}
+                today={today}
+                tasksOpen={tasksOpen}
+                onSelect={handleSelectDay}
+                onPrev={handleCalendarPrev}
+                onNext={handleCalendarNext}
+                onOpenYearView={handleOpenYearView}
+                onSelectMonth={handleSelectMonth}
+                getProgress={getProgress}
+              />
+              <aside className={`tasks-panel ${tasksOpen ? 'is-open' : ''}`}>
+                <TaskList
+                  date={selected}
+                  tasks={selectedTasks}
+                  open={tasksOpen}
+                  onAdd={addTask}
+                  onToggle={toggleTask}
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
+                  onClearAll={clearAllTasks}
+                  onClose={() => setTasksOpen(false)}
+                />
+              </aside>
+            </div>
+          ) : (
+            <BacklogPage
+              tasks={backlog}
+              onAdd={addBacklogTask}
+              onToggle={toggleBacklogTask}
+              onUpdate={updateBacklogTask}
+              onDelete={deleteBacklogTask}
+              onAssign={setAssignTaskId}
             />
-          </aside>
-        </div>
-      </main>
+          )}
+        </main>
+      </div>
+
+      <AssignDateDialog
+        open={Boolean(assignTask)}
+        initialDate={today}
+        onConfirm={assignBacklogTaskToDay}
+        onClose={() => setAssignTaskId(null)}
+      />
     </div>
   )
 }
