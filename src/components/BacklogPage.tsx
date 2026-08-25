@@ -5,23 +5,24 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type RefObject,
-} from 'react'
-import type { Task } from '../types'
-import { MaskedIcon } from './MaskedIcon'
-import { Tooltip } from './Tooltip'
-import taskIcon from '../assets/task-icon.png'
-import penIcon from '../assets/pen-icon.png'
+} from "react";
+import type { Task } from "../types";
+import { MaskedIcon } from "./MaskedIcon";
+import { Tooltip } from "./Tooltip";
+import taskIcon from "../assets/task-icon.png";
+import penIcon from "../assets/pen-icon.png";
+import chevronIcon from "../assets/chevron.png";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 10;
 
 type BacklogPageProps = {
-  tasks: Task[]
-  onAdd: (text: string) => void
-  onToggle: (id: string) => void
-  onUpdate: (id: string, text: string) => void
-  onDelete: (id: string) => void
-  onAssign: (id: string) => void
-}
+  tasks: Task[];
+  onAdd: (text: string) => void;
+  onToggle: (id: string) => void;
+  onUpdate: (id: string, text: string) => void;
+  onDelete: (id: string) => void;
+  onAssign: (id: string) => void;
+};
 
 export function BacklogPage({
   tasks,
@@ -31,119 +32,121 @@ export function BacklogPage({
   onDelete,
   onAssign,
 }: BacklogPageProps) {
-  const [draft, setDraft] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editText, setEditText] = useState('')
-  const [doneOpen, setDoneOpen] = useState(true)
-  const [activeVisible, setActiveVisible] = useState(PAGE_SIZE)
-  const [doneVisible, setDoneVisible] = useState(PAGE_SIZE)
-  const editInputRef = useRef<HTMLInputElement>(null)
-  const activeSentinelRef = useRef<HTMLDivElement>(null)
-  const doneSentinelRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [doneOpen, setDoneOpen] = useState(true);
+  const [activeVisible, setActiveVisible] = useState(PAGE_SIZE);
+  const [doneVisible, setDoneVisible] = useState(PAGE_SIZE);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const activeSentinelRef = useRef<HTMLDivElement>(null);
+  const doneSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const activeTasks = tasks.filter((task) => !task.completed)
-  const doneTasks = tasks.filter((task) => task.completed)
+  const activeTasks = tasks.filter((task) => !task.completed);
+  const doneTasks = tasks.filter((task) => task.completed);
 
   useEffect(() => {
     setActiveVisible((current) => {
-      if (activeTasks.length <= PAGE_SIZE) return PAGE_SIZE
-      return Math.min(current, activeTasks.length)
-    })
-  }, [activeTasks.length])
+      if (activeTasks.length <= PAGE_SIZE) return PAGE_SIZE;
+      return Math.min(current, activeTasks.length);
+    });
+  }, [activeTasks.length]);
 
   useEffect(() => {
     setDoneVisible((current) => {
-      if (doneTasks.length <= PAGE_SIZE) return PAGE_SIZE
-      return Math.min(current, doneTasks.length)
-    })
-  }, [doneTasks.length])
+      if (doneTasks.length <= PAGE_SIZE) return PAGE_SIZE;
+      return Math.min(current, doneTasks.length);
+    });
+  }, [doneTasks.length]);
 
   useEffect(() => {
     if (editingId) {
-      editInputRef.current?.focus()
-      editInputRef.current?.select()
+      editInputRef.current?.focus();
+      editInputRef.current?.select();
     }
-  }, [editingId])
+  }, [editingId]);
 
   useEffect(() => {
-    const root = scrollRef.current
-    const sentinel = activeSentinelRef.current
-    if (!root || !sentinel) return
+    const root = scrollRef.current;
+    const sentinel = activeSentinelRef.current;
+    if (!root || !sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return
+        if (!entries.some((entry) => entry.isIntersecting)) return;
         setActiveVisible((current) =>
           Math.min(current + PAGE_SIZE, activeTasks.length),
-        )
+        );
       },
-      { root, rootMargin: '80px' },
-    )
+      { root, rootMargin: "80px" },
+    );
 
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [activeTasks.length, activeVisible])
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTasks.length, activeVisible]);
 
   useEffect(() => {
-    if (!doneOpen) return
-    const root = scrollRef.current
-    const sentinel = doneSentinelRef.current
-    if (!root || !sentinel) return
+    if (!doneOpen) return;
+    const root = scrollRef.current;
+    const sentinel = doneSentinelRef.current;
+    if (!root || !sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return
-        setDoneVisible((current) => Math.min(current + PAGE_SIZE, doneTasks.length))
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setDoneVisible((current) =>
+          Math.min(current + PAGE_SIZE, doneTasks.length),
+        );
       },
-      { root, rootMargin: '80px' },
-    )
+      { root, rootMargin: "80px" },
+    );
 
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [doneOpen, doneTasks.length, doneVisible])
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [doneOpen, doneTasks.length, doneVisible]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const text = draft.trim()
-    if (!text) return
-    onAdd(text)
-    setDraft('')
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    onAdd(text);
+    setDraft("");
   }
 
   function startEdit(task: Task) {
-    setEditingId(task.id)
-    setEditText(task.text)
+    setEditingId(task.id);
+    setEditText(task.text);
   }
 
   function commitEdit() {
-    if (!editingId) return
-    const text = editText.trim()
-    if (text) onUpdate(editingId, text)
-    setEditingId(null)
-    setEditText('')
+    if (!editingId) return;
+    const text = editText.trim();
+    if (text) onUpdate(editingId, text);
+    setEditingId(null);
+    setEditText("");
   }
 
   function cancelEdit() {
-    setEditingId(null)
-    setEditText('')
+    setEditingId(null);
+    setEditText("");
   }
 
   function handleEditKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      commitEdit()
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitEdit();
     }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      cancelEdit()
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
     }
   }
 
-  const visibleActive = activeTasks.slice(0, activeVisible)
-  const visibleDone = doneTasks.slice(0, doneVisible)
-  const hasMoreActive = activeVisible < activeTasks.length
-  const hasMoreDone = doneVisible < doneTasks.length
+  const visibleActive = activeTasks.slice(0, activeVisible);
+  const visibleDone = doneTasks.slice(0, doneVisible);
+  const hasMoreActive = activeVisible < activeTasks.length;
+  const hasMoreDone = doneVisible < doneTasks.length;
 
   return (
     <section className="backlog-page">
@@ -152,7 +155,7 @@ export function BacklogPage({
           <h2>Backlog</h2>
           <p>
             {activeTasks.length === 0
-              ? 'No open tasks'
+              ? "No open tasks"
               : `${activeTasks.length} open · ${doneTasks.length} done`}
           </p>
         </div>
@@ -160,7 +163,9 @@ export function BacklogPage({
 
       <div className="backlog-scroll" ref={scrollRef}>
         {activeTasks.length === 0 ? (
-          <p className="empty-hint">Capture tasks here, then assign them to a day.</p>
+          <p className="empty-hint">
+            Capture tasks here, then assign them to a day.
+          </p>
         ) : (
           <ul className="backlog-list">
             {visibleActive.map((task) => (
@@ -183,13 +188,15 @@ export function BacklogPage({
         )}
 
         {hasMoreActive ? (
-          <div ref={activeSentinelRef} className="backlog-sentinel" aria-hidden="true" />
+          <div
+            ref={activeSentinelRef}
+            className="backlog-sentinel"
+            aria-hidden="true"
+          />
         ) : null}
 
         <form className="backlog-form" onSubmit={handleSubmit}>
-          <span className="backlog-form-plus" aria-hidden="true">
-            +
-          </span>
+          <MaskedIcon src={penIcon} className="backlog-form-icon" />
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -197,7 +204,6 @@ export function BacklogPage({
             aria-label="Add backlog item"
             maxLength={120}
           />
-          <MaskedIcon src={penIcon} className="backlog-form-icon" />
         </form>
 
         {doneTasks.length > 0 ? (
@@ -208,14 +214,19 @@ export function BacklogPage({
               onClick={() => setDoneOpen((open) => !open)}
               aria-expanded={doneOpen}
             >
-              <span className={`backlog-done-chevron ${doneOpen ? 'is-open' : ''}`}>
-                ⌄
-              </span>
-              {doneTasks.length} Completed item{doneTasks.length === 1 ? '' : 's'}
+              <MaskedIcon
+                src={chevronIcon}
+                className={`backlog-done-chevron ${doneOpen ? "is-open" : ""}`}
+              />
+              {doneTasks.length} Completed item
+              {doneTasks.length === 1 ? "" : "s"}
             </button>
 
-            {doneOpen ? (
-              <>
+            <div
+              className={`backlog-done-panel ${doneOpen ? "is-open" : ""}`}
+              aria-hidden={!doneOpen}
+            >
+              <div className="backlog-done-panel-inner">
                 <ul className="backlog-list">
                   {visibleDone.map((task) => (
                     <BacklogRow
@@ -241,28 +252,28 @@ export function BacklogPage({
                     aria-hidden="true"
                   />
                 ) : null}
-              </>
-            ) : null}
+              </div>
+            </div>
           </div>
         ) : null}
       </div>
     </section>
-  )
+  );
 }
 
 type BacklogRowProps = {
-  task: Task
-  editing: boolean
-  editText: string
-  editInputRef: RefObject<HTMLInputElement | null>
-  onEditTextChange: (value: string) => void
-  onCommitEdit: () => void
-  onEditKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
-  onToggle: () => void
-  onStartEdit: () => void
-  onDelete: () => void
-  onAssign: () => void
-}
+  task: Task;
+  editing: boolean;
+  editText: string;
+  editInputRef: RefObject<HTMLInputElement | null>;
+  onEditTextChange: (value: string) => void;
+  onCommitEdit: () => void;
+  onEditKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onToggle: () => void;
+  onStartEdit: () => void;
+  onDelete: () => void;
+  onAssign: () => void;
+};
 
 function BacklogRow({
   task,
@@ -278,7 +289,7 @@ function BacklogRow({
   onAssign,
 }: BacklogRowProps) {
   return (
-    <li className={`backlog-item ${task.completed ? 'is-done' : ''}`}>
+    <li className={`backlog-item ${task.completed ? "is-done" : ""}`}>
       <button
         type="button"
         className="task-check"
@@ -341,7 +352,7 @@ function BacklogRow({
         </Tooltip>
       </div>
     </li>
-  )
+  );
 }
 
 function TickIcon() {
@@ -356,12 +367,16 @@ function TickIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
 function CalendarActionIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="backlog-calendar-icon">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="backlog-calendar-icon"
+    >
       <rect
         x="4"
         y="5.5"
@@ -380,5 +395,5 @@ function CalendarActionIcon() {
         strokeLinecap="round"
       />
     </svg>
-  )
+  );
 }

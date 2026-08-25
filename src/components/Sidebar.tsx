@@ -1,12 +1,16 @@
-import { Tooltip } from "./Tooltip";
-import type { AppView } from "../types";
+import type { ReactNode } from 'react'
+import { Tooltip } from './Tooltip'
+import { MaskedIcon } from './MaskedIcon'
+import type { AppView } from '../types'
+import sidebarOpenIcon from '../assets/sidebar-open.png'
+import sidebarCloseIcon from '../assets/sidebar-close.png'
 
 type SidebarProps = {
-  collapsed: boolean;
-  activeView: AppView;
-  onToggleCollapsed: () => void;
-  onSelectView: (view: AppView) => void;
-};
+  collapsed: boolean
+  activeView: AppView
+  onToggleCollapsed: () => void
+  onSelectView: (view: AppView) => void
+}
 
 export function Sidebar({
   collapsed,
@@ -15,20 +19,23 @@ export function Sidebar({
   onSelectView,
 }: SidebarProps) {
   return (
-    <aside className={`app-sidebar ${collapsed ? "is-collapsed" : ""}`}>
+    <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-top">
         <Tooltip
-          label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           placement="right"
         >
           <button
             type="button"
             className="sidebar-toggle"
             onClick={onToggleCollapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-expanded={!collapsed}
           >
-            <SidebarToggleIcon collapsed={collapsed} />
+            <MaskedIcon
+              src={collapsed ? sidebarOpenIcon : sidebarCloseIcon}
+              className="sidebar-toggle-icon"
+            />
           </button>
         </Tooltip>
       </div>
@@ -36,30 +43,30 @@ export function Sidebar({
       <nav className="sidebar-nav" aria-label="Main">
         <SidebarItem
           collapsed={collapsed}
-          active={activeView === "calendar"}
+          active={activeView === 'calendar'}
           label="Calendar"
-          onClick={() => onSelectView("calendar")}
+          onClick={() => onSelectView('calendar')}
           icon={<CalendarNavIcon />}
         />
         <SidebarItem
           collapsed={collapsed}
-          active={activeView === "backlog"}
+          active={activeView === 'backlog'}
           label="Backlog"
-          onClick={() => onSelectView("backlog")}
+          onClick={() => onSelectView('backlog')}
           icon={<BacklogNavIcon />}
         />
       </nav>
     </aside>
-  );
+  )
 }
 
 type SidebarItemProps = {
-  collapsed: boolean;
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  icon: React.ReactNode;
-};
+  collapsed: boolean
+  active: boolean
+  label: string
+  onClick: () => void
+  icon: ReactNode
+}
 
 function SidebarItem({
   collapsed,
@@ -71,9 +78,9 @@ function SidebarItem({
   const button = (
     <button
       type="button"
-      className={`sidebar-item ${active ? "is-active" : ""}`}
+      className={`sidebar-item ${active ? 'is-active' : ''}`}
       onClick={onClick}
-      aria-current={active ? "page" : undefined}
+      aria-current={active ? 'page' : undefined}
       aria-label={label}
     >
       <span className="sidebar-item-icon" aria-hidden="true">
@@ -81,41 +88,15 @@ function SidebarItem({
       </span>
       {!collapsed ? <span className="sidebar-item-label">{label}</span> : null}
     </button>
-  );
+  )
 
-  if (!collapsed) return button;
+  if (!collapsed) return button
 
   return (
     <Tooltip label={label} placement="right">
       {button}
     </Tooltip>
-  );
-}
-
-function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {collapsed ? (
-        <path
-          d="M9 6h11M9 12h11M9 18h11M4 7l3 5-3 5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <path
-          d="M4 6h11M4 12h11M4 18h11M20 7l-3 5 3 5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )}
-    </svg>
-  );
+  )
 }
 
 function CalendarNavIcon() {

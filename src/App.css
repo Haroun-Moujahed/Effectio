@@ -1179,7 +1179,10 @@
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .modal-btn-secondary {
@@ -1263,7 +1266,7 @@
   border-color: var(--accent);
 }
 
-.sidebar-toggle svg {
+.sidebar-toggle-icon {
   width: 18px;
   height: 18px;
 }
@@ -1404,12 +1407,10 @@
   border-bottom: 1px solid var(--border);
 }
 
-.backlog-form-plus {
-  width: 20px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 1.25rem;
-  line-height: 1;
+.backlog-form-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-subtle);
   flex-shrink: 0;
 }
 
@@ -1425,13 +1426,6 @@
 
 .backlog-form input::placeholder {
   color: var(--text-subtle);
-}
-
-.backlog-form-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--text-subtle);
-  flex-shrink: 0;
 }
 
 .backlog-done {
@@ -1459,13 +1453,35 @@
 }
 
 .backlog-done-chevron {
-  display: inline-block;
-  transition: transform 0.18s ease;
-  transform: rotate(-90deg);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transform: rotate(180deg);
+  transition: transform 0.25s ease;
 }
 
 .backlog-done-chevron.is-open {
   transform: rotate(0deg);
+}
+
+.backlog-done-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.28s ease,
+    opacity 0.22s ease;
+}
+
+.backlog-done-panel.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.backlog-done-panel-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .backlog-sentinel {
