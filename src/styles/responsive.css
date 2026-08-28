@@ -1,0 +1,136 @@
+@media (max-width: 900px) {
+  .app-main {
+    padding: 12px 14px;
+  }
+
+  .tasks-panel.is-open {
+    flex-basis: min(320px, 42vw);
+    width: min(320px, 42vw);
+    margin-left: 12px;
+  }
+
+  .tasks-card {
+    width: min(320px, 42vw);
+  }
+
+  .weekday-full {
+    display: none;
+  }
+
+  .weekday-short {
+    display: inline;
+  }
+
+  .day-number {
+    top: 4px;
+    right: 5px;
+    font-size: 0.62rem;
+  }
+
+  .progress-ring {
+    width: min(78%, 58px);
+  }
+}
+
+@media (max-width: 700px) {
+  .app {
+    overflow: hidden auto;
+  }
+
+  .app-body {
+    flex-direction: column;
+  }
+
+  .app-sidebar,
+  .app-sidebar.is-collapsed {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-top {
+    margin: 0 8px 0 0;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex: 1;
+    gap: 4px;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-item,
+  .sidebar-item {
+    width: auto;
+    flex: 1;
+    justify-content: center;
+    margin: 0;
+    padding: 0 10px;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-item-label {
+    display: none;
+  }
+
+  .app-main {
+    height: auto;
+    min-height: calc(100svh - 72px - 56px);
+    overflow: visible;
+    padding: 12px;
+  }
+
+  .workspace {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100svh - 104px - 56px);
+  }
+
+  .workspace.tasks-open .calendar-card {
+    flex: 0 0 auto;
+    min-height: min(52vh, 420px);
+  }
+
+  .tasks-panel {
+    transform: translateY(12px);
+  }
+
+  .tasks-panel.is-open {
+    flex: 0 0 auto;
+    width: 100%;
+    flex-basis: auto;
+    height: min(48vh, 420px);
+    margin-left: 0;
+    margin-top: 12px;
+    transform: translateY(0);
+  }
+
+  .tasks-card {
+    width: 100%;
+    height: 100%;
+  }
+
+  .backlog-page {
+    min-height: min(70vh, 640px);
+    height: auto;
+  }
+
+  .brand h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-actions {
+    right: 12px;
+  }
+
+  .header-actions > .tooltip-anchor:has(.header-user) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand h1 {
+    font-size: 1.3rem;
+  }
+}

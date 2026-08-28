@@ -4,23 +4,27 @@ import {
   useRef,
   useState,
   type FormEvent,
-  type KeyboardEvent,
 } from 'react'
-import type { Task } from '../types'
+import type { DisplayTask } from '../types'
 import { formatSelectedDate } from '../dates'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
-import taskIcon from '../assets/task-icon.png'
+import { TaskEditModal } from './TaskEditModal'
 import penIcon from '../assets/pen-icon.png'
 
 type TaskListProps = {
   date: Date
-  tasks: Task[]
+  tasks: DisplayTask[]
   open: boolean
-  onAdd: (text: string) => void
-  onToggle: (id: string) => void
-  onUpdate: (id: string, text: string) => void
-  onDelete: (id: string) => void
+  onAdd: (title: string) => void
+  onToggle: (id: string, source: DisplayTask['source']) => void
+  onUpdate: (
+    id: string,
+    source: DisplayTask['source'],
+    title: string,
+    description: string,
+  ) => void
+  onDelete: (id: string, source: DisplayTask['source']) => void
   onClearAll: () => void
   onClose: () => void
 }
@@ -39,25 +43,25 @@ export function TaskList({
   onClose,
 }: TaskListProps) {
   const [draft, setDraft] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editText, setEditText] = useState('')
   const [clearOpen, setClearOpen] = useState(false)
   const [contentReady, setContentReady] = useState(false)
-  const editInputRef = useRef<HTMLInputElement>(null)
+  const [editTask, setEditTask] = useState<DisplayTask | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
   const clearTitleId = useId()
   const clearDescId = useId()
   const clearConfirmRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    setEditingId(null)
-    setEditText('')
     setClearOpen(false)
+    setEditTask(null)
   }, [date])
 
   useEffect(() => {
     if (!open) {
       setContentReady(false)
       setClearOpen(false)
+      setEditTask(null)
       return
     }
 
@@ -65,13 +69,6 @@ export function TaskList({
     const timer = window.setTimeout(() => setContentReady(true), REVEAL_MS)
     return () => window.clearTimeout(timer)
   }, [open, date])
-
-  useEffect(() => {
-    if (editingId) {
-      editInputRef.current?.focus()
-      editInputRef.current?.select()
-    }
-  }, [editingId])
 
   useEffect(() => {
     if (!clearOpen) return
@@ -92,39 +89,30 @@ export function TaskList({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const text = draft.trim()
-    if (!text) return
-    onAdd(text)
+    const title = draft.trim()
+    if (!title) return
+    onAdd(title)
     setDraft('')
   }
 
-  function startEdit(task: Task) {
-    setEditingId(task.id)
-    setEditText(task.text)
+  function openEditModal(task: DisplayTask) {
+    setEditTask(task)
+    setEditTitle(task.title)
+    setEditDescription(task.description)
   }
 
-  function commitEdit() {
-    if (!editingId) return
-    const text = editText.trim()
-    if (text) onUpdate(editingId, text)
-    setEditingId(null)
-    setEditText('')
+  function closeEditModal() {
+    setEditTask(null)
+    setEditTitle('')
+    setEditDescription('')
   }
 
-  function cancelEdit() {
-    setEditingId(null)
-    setEditText('')
-  }
-
-  function handleEditKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      commitEdit()
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      cancelEdit()
-    }
+  function saveEditModal() {
+    if (!editTask) return
+    const title = editTitle.trim()
+    if (!title) return
+    onUpdate(editTask.id, editTask.source, title, editDescription.trim())
+    closeEditModal()
   }
 
   const completed = tasks.filter((task) => task.completed).length
@@ -187,65 +175,44 @@ export function TaskList({
               <p className="empty-hint">Add something you want to get done today.</p>
             ) : (
               <ul className="task-list">
-                {tasks.map((task) => {
-                  const isEditing = editingId === task.id
+                {tasks.map((task) => (
+                  <li key={`${task.source}-${task.id}`} className={task.completed ? 'is-done' : ''}>
+                    <button
+                      type="button"
+                      className="task-check"
+                      onClick={() => onToggle(task.id, task.source)}
+                      aria-pressed={task.completed}
+                      aria-label={
+                        task.completed
+                          ? `Mark "${task.title}" as incomplete`
+                          : `Mark "${task.title}" as complete`
+                      }
+                    >
+                      <TickIcon />
+                    </button>
 
-                  return (
-                    <li key={task.id} className={task.completed ? 'is-done' : ''}>
-                      <button
-                        type="button"
-                        className="task-check"
-                        onClick={() => onToggle(task.id)}
-                        aria-pressed={task.completed}
-                        aria-label={
-                          task.completed
-                            ? `Mark "${task.text}" as incomplete`
-                            : `Mark "${task.text}" as complete`
-                        }
-                      >
-                        <TickIcon />
-                      </button>
+                    <button
+                      type="button"
+                      className="task-text-btn"
+                      onClick={() => openEditModal(task)}
+                    >
+                      <span className="task-text">{task.title}</span>
+                    </button>
 
-                      {isEditing ? (
-                        <input
-                          ref={editInputRef}
-                          className="task-edit-input"
-                          value={editText}
-                          onChange={(event) => setEditText(event.target.value)}
-                          onBlur={commitEdit}
-                          onKeyDown={handleEditKeyDown}
-                          aria-label="Update task"
-                          maxLength={120}
-                        />
-                      ) : (
-                        <span className="task-text">{task.text}</span>
-                      )}
-
-                      <div className="task-actions">
-                        <Tooltip label="Edit task" placement="top">
-                          <button
-                            type="button"
-                            className="task-action"
-                            onClick={() => startEdit(task)}
-                            aria-label={`Update "${task.text}"`}
-                          >
-                            <MaskedIcon src={taskIcon} />
-                          </button>
-                        </Tooltip>
-                        <Tooltip label="Delete task" placement="top">
-                          <button
-                            type="button"
-                            className="task-action task-delete"
-                            onClick={() => onDelete(task.id)}
-                            aria-label={`Delete "${task.text}"`}
-                          >
-                            ×
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </li>
-                  )
-                })}
+                    <div className="task-actions">
+                      <Tooltip label="Delete task" placement="top">
+                        <button
+                          type="button"
+                          className="task-action task-delete"
+                          onClick={() => onDelete(task.id, task.source)}
+                          aria-label={`Delete "${task.title}"`}
+                        >
+                          ×
+                        </button>
+                      </Tooltip>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
@@ -300,6 +267,16 @@ export function TaskList({
           </div>
         </div>
       ) : null}
+
+      <TaskEditModal
+        open={editTask !== null}
+        title={editTitle}
+        description={editDescription}
+        onTitleChange={setEditTitle}
+        onDescriptionChange={setEditDescription}
+        onSave={saveEditModal}
+        onClose={closeEditModal}
+      />
     </section>
   )
 }

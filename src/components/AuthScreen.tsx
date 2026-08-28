@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured, setRememberMe, supabase } from '../lib/supabase'
 import { Tooltip } from './Tooltip'
 
-type AuthMode = 'signin' | 'signup'
+type AuthScreenProps = {
+  mode: 'signin' | 'signup'
+}
 
-export function AuthScreen() {
-  const [mode, setMode] = useState<AuthMode>('signin')
+export function AuthScreen({ mode }: AuthScreenProps) {
+  const navigate = useNavigate()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,17 +32,6 @@ export function AuthScreen() {
         </div>
       </div>
     )
-  }
-
-  function switchMode(next: AuthMode) {
-    setMode(next)
-    setFullName('')
-    setPassword('')
-    setConfirmPassword('')
-    setShowPassword(false)
-    setShowConfirmPassword(false)
-    setError(null)
-    setMessage(null)
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -74,10 +66,13 @@ export function AuthScreen() {
         })
         if (signUpError) throw signUpError
 
-        if (data.session) return
+        if (data.session) {
+          navigate('/calendar', { replace: true })
+          return
+        }
 
         setMessage('Check your email to confirm your account, then sign in.')
-        switchMode('signin')
+        navigate('/sign-in', { replace: true })
       } else {
         setRememberMe(rememberMe)
 
@@ -86,6 +81,7 @@ export function AuthScreen() {
           password,
         })
         if (signInError) throw signInError
+        navigate('/calendar', { replace: true })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -200,15 +196,14 @@ export function AuthScreen() {
           </button>
         </form>
 
-        <button
-          type="button"
+        <Link
+          to={mode === 'signin' ? '/sign-up' : '/sign-in'}
           className="auth-switch"
-          onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
         >
           {mode === 'signin'
             ? 'Need an account? Sign up'
             : 'Already have an account? Sign in'}
-        </button>
+        </Link>
       </div>
     </div>
   )

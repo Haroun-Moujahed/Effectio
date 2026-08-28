@@ -1,0 +1,13 @@
+.app {
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      1200px 480px at 50% -120px,
+      var(--bg-accent),
+      transparent 70%
+    ),
+    var(--bg);
+}

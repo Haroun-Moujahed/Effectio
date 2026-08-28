@@ -1,7 +1,15 @@
 export type Task = {
   id: string
-  text: string
+  title: string
+  description: string
   completed: boolean
+  assignedDate?: string
+}
+
+export type TaskSource = 'calendar' | 'backlog'
+
+export type DisplayTask = Task & {
+  source: TaskSource
 }
 
 export type TasksByDate = Record<string, Task[]>

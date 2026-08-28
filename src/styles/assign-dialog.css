@@ -1,0 +1,112 @@
+/* —— Assign date dialog —— */
+.assign-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.assign-dialog {
+  width: min(360px, 100%);
+  padding: 18px 18px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.assign-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.assign-dialog-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.assign-dialog-close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.assign-dialog-close:hover {
+  background: var(--nav-hover);
+  color: var(--text);
+}
+
+.assign-month-nav {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.assign-month-title {
+  text-align: center;
+  font-weight: 560;
+  font-size: 0.95rem;
+}
+
+.assign-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.assign-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(var(--week-rows, 6), 36px);
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.assign-day-cell {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.assign-day-cell:hover {
+  background: var(--cell-hover);
+}
+
+.assign-day-cell.is-outside {
+  color: var(--text-subtle);
+  opacity: 0.55;
+}
+
+.assign-day-cell.is-today {
+  border-color: var(--border-strong);
+}
+
+.assign-day-cell.is-selected {
+  background: var(--cell-selected);
+  border-color: var(--cell-selected-border);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.assign-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

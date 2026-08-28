@@ -1,0 +1,123 @@
+/* —— Sidebar —— */
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 212px;
+  min-height: 0;
+  padding: 12px 10px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--header-bg) 88%, var(--nav-bg));
+  transition: width 0.22s ease;
+  overflow: hidden;
+}
+
+.app-sidebar.is-collapsed {
+  width: 68px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.sidebar-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.app-sidebar.is-collapsed .sidebar-top {
+  justify-content: center;
+}
+
+.sidebar-toggle {
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--nav-bg);
+  color: var(--text);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.sidebar-toggle:hover {
+  background: var(--nav-hover);
+  border-color: var(--accent);
+}
+
+.sidebar-toggle-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.app-sidebar.is-collapsed .sidebar-item {
+  justify-content: center;
+  padding: 0;
+  width: 44px;
+  margin: 0 auto;
+}
+
+.sidebar-item:hover {
+  background: var(--nav-hover);
+  color: var(--text);
+}
+
+.sidebar-item.is-active {
+  background: var(--nav-hover);
+  color: var(--accent);
+}
+
+.sidebar-item-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.sidebar-item-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-item-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.app-sidebar.is-collapsed .sidebar-top > .tooltip-anchor,
+.app-sidebar.is-collapsed .sidebar-nav > .tooltip-anchor {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}

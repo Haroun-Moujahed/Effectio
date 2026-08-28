@@ -55,6 +55,36 @@ export function formatSelectedDate(date: Date): string {
   })
 }
 
+export function formatShortDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+export function formatAssignedDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = date.toLocaleDateString('en-US', { month: 'short' })
+  return `${day} ${month} ${date.getFullYear()}`
+}
+
+export function parseDateKey(key: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2]) - 1
+  const day = Number(match[3])
+  const date = new Date(year, month, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) {
+    return null
+  }
+  return date
+}
+
 export const MONTHS = [
   'January',
   'February',

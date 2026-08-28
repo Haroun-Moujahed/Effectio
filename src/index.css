@@ -41,6 +41,10 @@ html {
   --input-bg: rgba(16, 21, 30, 0.9);
   --input-border: rgba(90, 140, 200, 0.22);
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --confirm-bg: #0f141c;
+  --confirm-text: #eef3f8;
+  --confirm-text-muted: #8a9bb0;
+  --confirm-border: rgba(90, 140, 200, 0.22);
 }
 
 [data-theme='light'] {
@@ -70,6 +74,10 @@ html {
   --input-bg: #f8fafd;
   --input-border: rgba(90, 120, 160, 0.28);
   --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --confirm-bg: #ffffff;
+  --confirm-text: #152033;
+  --confirm-text-muted: #5f7088;
+  --confirm-border: rgba(90, 120, 160, 0.28);
 }
 
 body {

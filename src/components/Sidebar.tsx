@@ -1,23 +1,16 @@
 import type { ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
 import { Tooltip } from './Tooltip'
 import { MaskedIcon } from './MaskedIcon'
-import type { AppView } from '../types'
 import sidebarOpenIcon from '../assets/sidebar-open.png'
 import sidebarCloseIcon from '../assets/sidebar-close.png'
 
 type SidebarProps = {
   collapsed: boolean
-  activeView: AppView
   onToggleCollapsed: () => void
-  onSelectView: (view: AppView) => void
 }
 
-export function Sidebar({
-  collapsed,
-  activeView,
-  onToggleCollapsed,
-  onSelectView,
-}: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   return (
     <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-top">
@@ -43,16 +36,14 @@ export function Sidebar({
       <nav className="sidebar-nav" aria-label="Main">
         <SidebarItem
           collapsed={collapsed}
-          active={activeView === 'calendar'}
+          to="/calendar"
           label="Calendar"
-          onClick={() => onSelectView('calendar')}
           icon={<CalendarNavIcon />}
         />
         <SidebarItem
           collapsed={collapsed}
-          active={activeView === 'backlog'}
+          to="/backlog"
           label="Backlog"
-          onClick={() => onSelectView('backlog')}
           icon={<BacklogNavIcon />}
         />
       </nav>
@@ -62,39 +53,32 @@ export function Sidebar({
 
 type SidebarItemProps = {
   collapsed: boolean
-  active: boolean
+  to: string
   label: string
-  onClick: () => void
   icon: ReactNode
 }
 
-function SidebarItem({
-  collapsed,
-  active,
-  label,
-  onClick,
-  icon,
-}: SidebarItemProps) {
-  const button = (
-    <button
-      type="button"
-      className={`sidebar-item ${active ? 'is-active' : ''}`}
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
+function SidebarItem({ collapsed, to, label, icon }: SidebarItemProps) {
+  const link = (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `sidebar-item ${isActive ? 'is-active' : ''}`
+      }
       aria-label={label}
     >
       <span className="sidebar-item-icon" aria-hidden="true">
         {icon}
       </span>
       {!collapsed ? <span className="sidebar-item-label">{label}</span> : null}
-    </button>
+    </NavLink>
   )
 
-  if (!collapsed) return button
+  if (!collapsed) return link
 
   return (
     <Tooltip label={label} placement="right">
-      {button}
+      {link}
     </Tooltip>
   )
 }
@@ -120,7 +104,7 @@ function CalendarNavIcon() {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
 
 function BacklogNavIcon() {
@@ -141,5 +125,5 @@ function BacklogNavIcon() {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }

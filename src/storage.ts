@@ -15,11 +15,26 @@ export function emptyPersistedTasks(): PersistedTasks {
 function coerceTask(value: unknown): Task | null {
   if (!value || typeof value !== 'object') return null
   const task = value as Record<string, unknown>
-  if (typeof task.id !== 'string' || typeof task.text !== 'string') return null
+  if (typeof task.id !== 'string') return null
+
+  const title =
+    typeof task.title === 'string'
+      ? task.title
+      : typeof task.text === 'string'
+        ? task.text
+        : null
+  if (title === null) return null
+
+  const description = typeof task.description === 'string' ? task.description : ''
+  const assignedDate =
+    typeof task.assignedDate === 'string' ? task.assignedDate : undefined
+
   return {
     id: task.id,
-    text: task.text,
+    title,
+    description,
     completed: Boolean(task.completed),
+    ...(assignedDate ? { assignedDate } : {}),
   }
 }
 

@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom'
 import { Header } from './components/Header'
-import { CalendarGrid, type CalendarMode } from './components/CalendarGrid'
-import { TaskList } from './components/TaskList'
+import { AssignDateDialog } from './components/AssignDateDialog'
 import { AuthScreen } from './components/AuthScreen'
 import { Sidebar } from './components/Sidebar'
-import { BacklogPage } from './components/BacklogPage'
-import { AssignDateDialog } from './components/AssignDateDialog'
+import type { CalendarMode } from './components/CalendarGrid'
+import { CalendarPage } from './pages/CalendarPage'
+import { BacklogRoutePage } from './pages/BacklogRoutePage'
 import { useAuthSession } from './useAuthSession'
 import { addMonths, addYears, dateKey, isSameMonth } from './dates'
 import {
@@ -18,8 +23,9 @@ import {
 } from './storage'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { isSupabaseConfigured } from './lib/supabase'
-import type { AppView, DayProgress, Task, TasksByDate } from './types'
-import './App.css'
+import { createTask, getProgressForDate, getTasksForDate } from './tasks'
+import type { Task, TaskSource, TasksByDate } from './types'
+import './styles/index.css'
 
 applyTheme(loadTheme())
 
@@ -42,7 +48,6 @@ export default function App() {
   const { session, user, ready, signOut } = useAuthSession()
   const today = useMemo(() => new Date(), [])
   const [theme, setTheme] = useState<Theme>(loadTheme)
-  const [activeView, setActiveView] = useState<AppView>('calendar')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('month')
   const [viewDate, setViewDate] = useState(() => new Date())
@@ -152,6 +157,29 @@ export default function App() {
     saveSidebarCollapsed(sidebarCollapsed)
   }, [sidebarCollapsed])
 
+  const handleCalendarPrev = useCallback(() => {
+    setViewDate((current) =>
+      calendarMode === 'year' ? addYears(current, -1) : addMonths(current, -1),
+    )
+  }, [calendarMode])
+
+  const handleCalendarNext = useCallback(() => {
+    setViewDate((current) =>
+      calendarMode === 'year' ? addYears(current, 1) : addMonths(current, 1),
+    )
+  }, [calendarMode])
+
+  const navigateToDate = useCallback((date: Date) => {
+    setSelected(date)
+    setTasksOpen(true)
+    setCalendarMode('month')
+    setViewDate((current) => (isSameMonth(date, current) ? current : date))
+  }, [])
+
+  const closeTasksPanel = useCallback(() => {
+    setTasksOpen(false)
+  }, [])
+
   if (!ready) {
     return (
       <div className="app">
@@ -160,19 +188,46 @@ export default function App() {
     )
   }
 
-  if (isSupabaseConfigured && !session) {
+  const authRequired = isSupabaseConfigured && !session
+  const tasksLoading = isSupabaseConfigured && session && !tasksReady
+
+  if (authRequired) {
     return (
-      <div className="app">
-        <Header
-          theme={theme}
-          onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+      <Routes>
+        <Route
+          path="/sign-up"
+          element={
+            <div className="app">
+              <Header
+                theme={theme}
+                onToggleTheme={() =>
+                  setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+                }
+              />
+              <AuthScreen mode="signup" />
+            </div>
+          }
         />
-        <AuthScreen />
-      </div>
+        <Route
+          path="/sign-in"
+          element={
+            <div className="app">
+              <Header
+                theme={theme}
+                onToggleTheme={() =>
+                  setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+                }
+              />
+              <AuthScreen mode="signin" />
+            </div>
+          }
+        />
+        <Route path="*" element={<Navigate to="/sign-in" replace />} />
+      </Routes>
     )
   }
 
-  if (isSupabaseConfigured && !tasksReady) {
+  if (tasksLoading) {
     return (
       <div className="app">
         <Header
@@ -188,69 +243,98 @@ export default function App() {
   }
 
   const selectedKey = dateKey(selected)
-  const selectedTasks = tasksByDate[selectedKey] ?? []
+  const selectedTasks = getTasksForDate(selectedKey, tasksByDate, backlog)
   const assignTask = assignTaskId
     ? backlog.find((task) => task.id === assignTaskId) ?? null
     : null
 
-  function getProgress(date: Date): DayProgress {
-    const tasks = tasksByDate[dateKey(date)] ?? []
-    const completed = tasks.filter((task) => task.completed).length
-    const total = tasks.length
-    return {
-      total,
-      completed,
-      percent: total === 0 ? 0 : Math.round((completed / total) * 100),
-    }
+  function getProgress(date: Date) {
+    return getProgressForDate(dateKey(date), tasksByDate, backlog)
   }
 
-  function updateSelected(mutator: (tasks: Task[]) => Task[]) {
+  function updateCalendarTasks(key: string, mutator: (tasks: Task[]) => Task[]) {
     setTasksByDate((current) => {
-      const next = mutator(current[selectedKey] ?? [])
+      const next = mutator(current[key] ?? [])
       const copy = { ...current }
       if (next.length === 0) {
-        delete copy[selectedKey]
+        delete copy[key]
       } else {
-        copy[selectedKey] = next
+        copy[key] = next
       }
       return copy
     })
   }
 
-  function addTask(text: string) {
-    updateSelected((tasks) => [
-      ...tasks,
-      { id: crypto.randomUUID(), text, completed: false },
-    ])
+  function addTask(title: string) {
+    updateCalendarTasks(selectedKey, (tasks) => [...tasks, createTask(title)])
   }
 
-  function toggleTask(id: string) {
-    updateSelected((tasks) =>
+  function toggleTask(id: string, source: TaskSource) {
+    if (source === 'backlog') {
+      setBacklog((current) =>
+        current.map((task) =>
+          task.id === id ? { ...task, completed: !task.completed } : task,
+        ),
+      )
+      return
+    }
+
+    updateCalendarTasks(selectedKey, (tasks) =>
       tasks.map((task) =>
         task.id === id ? { ...task, completed: !task.completed } : task,
       ),
     )
   }
 
-  function updateTask(id: string, text: string) {
-    updateSelected((tasks) =>
-      tasks.map((task) => (task.id === id ? { ...task, text } : task)),
+  function updateTask(
+    id: string,
+    source: TaskSource,
+    title: string,
+    description: string,
+  ) {
+    if (source === 'backlog') {
+      setBacklog((current) =>
+        current.map((task) =>
+          task.id === id ? { ...task, title, description } : task,
+        ),
+      )
+      return
+    }
+
+    updateCalendarTasks(selectedKey, (tasks) =>
+      tasks.map((task) =>
+        task.id === id ? { ...task, title, description } : task,
+      ),
     )
   }
 
-  function deleteTask(id: string) {
-    updateSelected((tasks) => tasks.filter((task) => task.id !== id))
+  function deleteTask(id: string, source: TaskSource) {
+    if (source === 'backlog') {
+      setBacklog((current) => current.filter((task) => task.id !== id))
+      return
+    }
+
+    updateCalendarTasks(selectedKey, (tasks) =>
+      tasks.filter((task) => task.id !== id),
+    )
   }
 
-  function clearAllTasks() {
-    updateSelected(() => [])
+  function clearAllTasksForDay() {
+    const key = selectedKey
+    setTasksByDate((current) => {
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
+    setBacklog((current) =>
+      current.map((task) =>
+        task.assignedDate === key ? { ...task, assignedDate: undefined } : task,
+      ),
+    )
   }
 
-  function addBacklogTask(text: string) {
-    setBacklog((current) => [
-      ...current,
-      { id: crypto.randomUUID(), text, completed: false },
-    ])
+  function addBacklogTask(title: string) {
+    setBacklog((current) => [...current, createTask(title)])
   }
 
   function toggleBacklogTask(id: string) {
@@ -261,14 +345,20 @@ export default function App() {
     )
   }
 
-  function updateBacklogTask(id: string, text: string) {
+  function updateBacklogTask(id: string, title: string, description: string) {
     setBacklog((current) =>
-      current.map((task) => (task.id === id ? { ...task, text } : task)),
+      current.map((task) =>
+        task.id === id ? { ...task, title, description } : task,
+      ),
     )
   }
 
   function deleteBacklogTask(id: string) {
     setBacklog((current) => current.filter((task) => task.id !== id))
+  }
+
+  function clearAllBacklogTasks() {
+    setBacklog([])
   }
 
   function assignBacklogTaskToDay(date: Date) {
@@ -280,19 +370,12 @@ export default function App() {
     }
 
     const key = dateKey(date)
-    setBacklog((current) => current.filter((item) => item.id !== assignTaskId))
-    setTasksByDate((current) => ({
-      ...current,
-      [key]: [...(current[key] ?? []), task],
-    }))
+    setBacklog((current) =>
+      current.map((item) =>
+        item.id === assignTaskId ? { ...item, assignedDate: key } : item,
+      ),
+    )
     setAssignTaskId(null)
-    setActiveView('calendar')
-    setSelected(date)
-    setTasksOpen(true)
-    setCalendarMode('month')
-    if (!isSameMonth(date, viewDate)) {
-      setViewDate(date)
-    }
   }
 
   function handleSelectDay(date: Date) {
@@ -315,25 +398,6 @@ export default function App() {
     setCalendarMode('month')
   }
 
-  function handleCalendarPrev() {
-    setViewDate((current) =>
-      calendarMode === 'year' ? addYears(current, -1) : addMonths(current, -1),
-    )
-  }
-
-  function handleCalendarNext() {
-    setViewDate((current) =>
-      calendarMode === 'year' ? addYears(current, 1) : addMonths(current, 1),
-    )
-  }
-
-  function handleSelectView(view: AppView) {
-    setActiveView(view)
-    if (view === 'backlog') {
-      setTasksOpen(false)
-    }
-  }
-
   return (
     <div className="app">
       <Header
@@ -354,50 +418,56 @@ export default function App() {
       <div className="app-body">
         <Sidebar
           collapsed={sidebarCollapsed}
-          activeView={activeView}
           onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
-          onSelectView={handleSelectView}
         />
         <main className="app-main">
-          {activeView === 'calendar' ? (
-            <div className={`workspace ${tasksOpen ? 'tasks-open' : ''}`}>
-              <CalendarGrid
-                mode={calendarMode}
-                viewDate={viewDate}
-                selected={selected}
-                today={today}
-                tasksOpen={tasksOpen}
-                onSelect={handleSelectDay}
-                onPrev={handleCalendarPrev}
-                onNext={handleCalendarNext}
-                onOpenYearView={handleOpenYearView}
-                onSelectMonth={handleSelectMonth}
-                getProgress={getProgress}
-              />
-              <aside className={`tasks-panel ${tasksOpen ? 'is-open' : ''}`}>
-                <TaskList
-                  date={selected}
+          <Routes>
+            <Route path="/" element={<Navigate to="/calendar" replace />} />
+            <Route
+              path="/calendar"
+              element={
+                <CalendarPage
+                  calendarMode={calendarMode}
+                  viewDate={viewDate}
+                  selected={selected}
+                  today={today}
+                  tasksOpen={tasksOpen}
                   tasks={selectedTasks}
-                  open={tasksOpen}
+                  onSelectDay={handleSelectDay}
+                  onPrev={handleCalendarPrev}
+                  onNext={handleCalendarNext}
+                  onOpenYearView={handleOpenYearView}
+                  onSelectMonth={handleSelectMonth}
+                  getProgress={getProgress}
                   onAdd={addTask}
                   onToggle={toggleTask}
                   onUpdate={updateTask}
                   onDelete={deleteTask}
-                  onClearAll={clearAllTasks}
-                  onClose={() => setTasksOpen(false)}
+                  onClearAll={clearAllTasksForDay}
+                  onCloseTasks={closeTasksPanel}
+                  onNavigateToDate={navigateToDate}
                 />
-              </aside>
-            </div>
-          ) : (
-            <BacklogPage
-              tasks={backlog}
-              onAdd={addBacklogTask}
-              onToggle={toggleBacklogTask}
-              onUpdate={updateBacklogTask}
-              onDelete={deleteBacklogTask}
-              onAssign={setAssignTaskId}
+              }
             />
-          )}
+            <Route
+              path="/backlog"
+              element={
+                <BacklogRoutePage
+                  tasks={backlog}
+                  onAdd={addBacklogTask}
+                  onToggle={toggleBacklogTask}
+                  onUpdate={updateBacklogTask}
+                  onDelete={deleteBacklogTask}
+                  onAssign={setAssignTaskId}
+                  onClearAll={clearAllBacklogTasks}
+                  onCloseTasks={closeTasksPanel}
+                />
+              }
+            />
+            <Route path="/sign-in" element={<Navigate to="/calendar" replace />} />
+            <Route path="/sign-up" element={<Navigate to="/calendar" replace />} />
+            <Route path="*" element={<Navigate to="/calendar" replace />} />
+          </Routes>
         </main>
       </div>
 

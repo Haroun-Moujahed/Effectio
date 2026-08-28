@@ -1,0 +1,42 @@
+.tooltip-anchor {
+  display: inline-flex;
+  align-items: center;
+  line-height: normal;
+}
+
+.tooltip-anchor:has(> .icon-btn),
+.tooltip-anchor:has(> .nav-btn),
+.tooltip-anchor:has(> .tasks-close),
+.tooltip-anchor:has(> .task-action),
+.tooltip-anchor:has(> .auth-eye) {
+  line-height: 0;
+}
+
+.app-tooltip {
+  z-index: 10000;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.28);
+  pointer-events: none;
+  word-break: break-word;
+}
+
+[data-theme="light"] .app-tooltip {
+  background: #152033;
+  color: #f8fafc;
+}
+
+.app-tooltip-arrow {
+  fill: #0f172a;
+}
+
+[data-theme="light"] .app-tooltip-arrow {
+  fill: #152033;
+}
