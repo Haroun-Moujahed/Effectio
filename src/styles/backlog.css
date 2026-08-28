@@ -116,13 +116,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.backlog-form-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--text-subtle);
-  flex-shrink: 0;
-}
-
 .backlog-form input {
   flex: 1;
   min-width: 0;
@@ -131,6 +124,13 @@
   background: transparent;
   color: var(--text);
   outline: none;
+}
+
+.backlog-form-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-subtle);
+  flex-shrink: 0;
 }
 
 .backlog-form input::placeholder {

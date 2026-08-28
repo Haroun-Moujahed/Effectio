@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { TASK_TITLE_MAX_LENGTH } from '../constants'
 
 type TaskEditModalProps = {
   open: boolean
@@ -25,6 +26,8 @@ export function TaskEditModal({
   const titleRef = useRef<HTMLInputElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+
+  const titleRemaining = TASK_TITLE_MAX_LENGTH - title.length
 
   useEffect(() => {
     if (!open) return
@@ -64,13 +67,18 @@ export function TaskEditModal({
         <h2 className="modal-title">Edit task</h2>
 
         <label className="task-edit-field" htmlFor={titleId}>
-          <span>Title</span>
+          <span className="task-edit-field-label">
+            <span>Title</span>
+            <span className="task-char-counter" aria-live="polite">
+              {titleRemaining} left
+            </span>
+          </span>
           <input
             ref={titleRef}
             id={titleId}
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
-            maxLength={120}
+            maxLength={TASK_TITLE_MAX_LENGTH}
             required
           />
         </label>

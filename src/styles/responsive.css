@@ -87,7 +87,8 @@
     min-height: calc(100svh - 104px - 56px);
   }
 
-  .workspace.tasks-open .calendar-card {
+  .workspace.tasks-open .calendar-card,
+  .workspace.tasks-open .schedule-card {
     flex: 0 0 auto;
     min-height: min(52vh, 420px);
   }

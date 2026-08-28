@@ -107,6 +107,13 @@
   font-size: 0.82rem;
 }
 
+.task-edit-field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .task-edit-field input,
 .task-edit-field textarea {
   width: 100%;

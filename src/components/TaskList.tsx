@@ -3,19 +3,25 @@ import {
   useId,
   useRef,
   useState,
+  type DragEvent,
   type FormEvent,
 } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { DisplayTask } from '../types'
-import { formatSelectedDate } from '../dates'
+import { dateKey, formatSelectedDate } from '../dates'
+import { TASK_TITLE_MAX_LENGTH } from '../constants'
+import { setScheduleDragImage, writeTaskDragData } from '../schedule'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
 import penIcon from '../assets/pen-icon.png'
+import taskIcon from '../assets/task-icon.png'
 
 type TaskListProps = {
   date: Date
   tasks: DisplayTask[]
   open: boolean
+  mode?: 'panel' | 'schedule'
   onAdd: (title: string) => void
   onToggle: (id: string, source: DisplayTask['source']) => void
   onUpdate: (
@@ -35,6 +41,7 @@ export function TaskList({
   date,
   tasks,
   open,
+  mode = 'panel',
   onAdd,
   onToggle,
   onUpdate,
@@ -42,9 +49,11 @@ export function TaskList({
   onClearAll,
   onClose,
 }: TaskListProps) {
+  const navigate = useNavigate()
+  const isSchedule = mode === 'schedule'
   const [draft, setDraft] = useState('')
   const [clearOpen, setClearOpen] = useState(false)
-  const [contentReady, setContentReady] = useState(false)
+  const [contentReady, setContentReady] = useState(isSchedule)
   const [editTask, setEditTask] = useState<DisplayTask | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -58,6 +67,11 @@ export function TaskList({
   }, [date])
 
   useEffect(() => {
+    if (isSchedule) {
+      setContentReady(true)
+      return
+    }
+
     if (!open) {
       setContentReady(false)
       setClearOpen(false)
@@ -68,7 +82,7 @@ export function TaskList({
     setContentReady(false)
     const timer = window.setTimeout(() => setContentReady(true), REVEAL_MS)
     return () => window.clearTimeout(timer)
-  }, [open, date])
+  }, [open, date, isSchedule])
 
   useEffect(() => {
     if (!clearOpen) return
@@ -115,6 +129,25 @@ export function TaskList({
     closeEditModal()
   }
 
+  function handleTaskDragStart(event: DragEvent<HTMLLIElement>, task: DisplayTask) {
+    const target = event.target as HTMLElement
+    if (target.closest('button')) {
+      event.preventDefault()
+      return
+    }
+
+    writeTaskDragData(event.dataTransfer, {
+      taskId: task.id,
+      taskSource: task.source,
+      title: task.title,
+    })
+    setScheduleDragImage(event.dataTransfer, task.title)
+  }
+
+  function openScheduleForDay() {
+    navigate(`/schedule?date=${dateKey(date)}`)
+  }
+
   const completed = tasks.filter((task) => task.completed).length
   const showSkeleton = open && !contentReady
 
@@ -137,7 +170,19 @@ export function TaskList({
         <>
           <div className="tasks-heading">
             <div>
-              <h2>{formatSelectedDate(date)}</h2>
+              {isSchedule ? (
+                <h2>{formatSelectedDate(date)}</h2>
+              ) : (
+                <Tooltip label="Open schedule" placement="bottom">
+                  <button
+                    type="button"
+                    className="calendar-title-btn tasks-date-link"
+                    onClick={openScheduleForDay}
+                  >
+                    {formatSelectedDate(date)}
+                  </button>
+                </Tooltip>
+              )}
               <p>
                 {tasks.length === 0
                   ? 'No tasks yet'
@@ -157,16 +202,18 @@ export function TaskList({
                   </button>
                 </Tooltip>
               ) : null}
-              <Tooltip label="Close task list" placement="left">
-                <button
-                  type="button"
-                  className="tasks-close"
-                  onClick={onClose}
-                  aria-label="Close task list"
-                >
-                  <CloseIcon />
-                </button>
-              </Tooltip>
+              {!isSchedule ? (
+                <Tooltip label="Close task list" placement="left">
+                  <button
+                    type="button"
+                    className="tasks-close"
+                    onClick={onClose}
+                    aria-label="Close task list"
+                  >
+                    <CloseIcon />
+                  </button>
+                </Tooltip>
+              ) : null}
             </div>
           </div>
 
@@ -176,7 +223,16 @@ export function TaskList({
             ) : (
               <ul className="task-list">
                 {tasks.map((task) => (
-                  <li key={`${task.source}-${task.id}`} className={task.completed ? 'is-done' : ''}>
+                  <li
+                    key={`${task.source}-${task.id}`}
+                    className={`${task.completed ? 'is-done' : ''} ${isSchedule ? 'schedule-task-draggable' : ''}`}
+                    draggable={isSchedule}
+                    onDragStart={
+                      isSchedule
+                        ? (event) => handleTaskDragStart(event, task)
+                        : undefined
+                    }
+                  >
                     <button
                       type="button"
                       className="task-check"
@@ -191,15 +247,19 @@ export function TaskList({
                       <TickIcon />
                     </button>
 
-                    <button
-                      type="button"
-                      className="task-text-btn"
-                      onClick={() => openEditModal(task)}
-                    >
-                      <span className="task-text">{task.title}</span>
-                    </button>
+                    <span className="task-text">{task.title}</span>
 
                     <div className="task-actions">
+                      <Tooltip label="Edit task" placement="top">
+                        <button
+                          type="button"
+                          className="task-action"
+                          onClick={() => openEditModal(task)}
+                          aria-label={`Edit "${task.title}"`}
+                        >
+                          <MaskedIcon src={taskIcon} />
+                        </button>
+                      </Tooltip>
                       <Tooltip label="Delete task" placement="top">
                         <button
                           type="button"
@@ -224,8 +284,11 @@ export function TaskList({
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Enter new task"
               aria-label="Enter new task"
-              maxLength={120}
+              maxLength={TASK_TITLE_MAX_LENGTH}
             />
+            <span className="task-char-counter" aria-live="polite">
+              {TASK_TITLE_MAX_LENGTH - draft.length} left
+            </span>
           </form>
         </>
       )}

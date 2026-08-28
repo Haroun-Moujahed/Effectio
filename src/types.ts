@@ -14,9 +14,20 @@ export type DisplayTask = Task & {
 
 export type TasksByDate = Record<string, Task[]>
 
+export type ScheduleEntry = {
+  id: string
+  taskId: string
+  taskSource: TaskSource
+  startMinutes: number
+  durationMinutes: number
+}
+
+export type ScheduleByDate = Record<string, ScheduleEntry[]>
+
 export type PersistedTasks = {
   byDate: TasksByDate
   backlog: Task[]
+  scheduleByDate: ScheduleByDate
 }
 
 export type DayProgress = {
@@ -25,4 +36,12 @@ export type DayProgress = {
   percent: number
 }
 
-export type AppView = 'calendar' | 'backlog'
+export type AppView = 'calendar' | 'backlog' | 'schedule'
+
+export type DisplayScheduleEntry = ScheduleEntry & {
+  title: string
+  completed: boolean
+}
+
+export const TASK_DRAG_TYPE = 'application/x-effectio-task'
+export const ENTRY_DRAG_TYPE = 'application/x-effectio-schedule-entry'

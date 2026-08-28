@@ -305,6 +305,17 @@
   font-size: 0.95rem;
   line-height: 1.35;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-char-counter {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .task-list li.is-done .task-check,

@@ -42,6 +42,12 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         />
         <SidebarItem
           collapsed={collapsed}
+          to="/schedule"
+          label="Schedule"
+          icon={<ScheduleNavIcon />}
+        />
+        <SidebarItem
+          collapsed={collapsed}
           to="/backlog"
           label="Backlog"
           icon={<BacklogNavIcon />}
@@ -102,6 +108,22 @@ function CalendarNavIcon() {
         stroke="currentColor"
         strokeWidth="1.9"
         strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function ScheduleNavIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.9" />
+      <path
+        d="M12 7v5l3 2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )

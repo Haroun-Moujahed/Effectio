@@ -9,10 +9,12 @@ import {
 import { useNavigate } from 'react-router-dom'
 import type { Task } from '../types'
 import { formatAssignedDate, parseDateKey } from '../dates'
+import { TASK_TITLE_MAX_LENGTH } from '../constants'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
 import penIcon from '../assets/pen-icon.png'
+import taskIcon from '../assets/task-icon.png'
 import chevronIcon from '../assets/chevron.png'
 
 const PAGE_SIZE = 10
@@ -215,8 +217,11 @@ export function BacklogPage({
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Enter new task"
             aria-label="Add backlog item"
-            maxLength={120}
+            maxLength={TASK_TITLE_MAX_LENGTH}
           />
+          <span className="task-char-counter" aria-live="polite">
+            {TASK_TITLE_MAX_LENGTH - draft.length} left
+          </span>
         </form>
 
         {doneTasks.length > 0 ? (
@@ -358,9 +363,7 @@ function BacklogRow({
         <TickIcon />
       </button>
 
-      <button type="button" className="task-text-btn" onClick={onOpenEdit}>
-        <span className="task-text">{task.title}</span>
-      </button>
+      <span className="task-text">{task.title}</span>
 
       {assignedDate ? (
         <button
@@ -381,6 +384,16 @@ function BacklogRow({
             aria-label={`Assign "${task.title}" to a day`}
           >
             <CalendarActionIcon />
+          </button>
+        </Tooltip>
+        <Tooltip label="Edit task" placement="top">
+          <button
+            type="button"
+            className="task-action"
+            onClick={onOpenEdit}
+            aria-label={`Edit "${task.title}"`}
+          >
+            <MaskedIcon src={taskIcon} />
           </button>
         </Tooltip>
         <Tooltip label="Delete task" placement="top">

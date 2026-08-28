@@ -1,5 +1,12 @@
 import { supabase } from './lib/supabase'
-import type { PersistedTasks, Task, TasksByDate } from './types'
+import type {
+  PersistedTasks,
+  ScheduleByDate,
+  ScheduleEntry,
+  Task,
+  TaskSource,
+  TasksByDate,
+} from './types'
 
 const STORAGE_PREFIX = 'effectio.tasks.v1'
 const SIDEBAR_COLLAPSED_KEY = 'effectio.sidebar.collapsed'
@@ -9,7 +16,7 @@ function storageKey(userId: string): string {
 }
 
 export function emptyPersistedTasks(): PersistedTasks {
-  return { byDate: {}, backlog: [] }
+  return { byDate: {}, backlog: [], scheduleByDate: {} }
 }
 
 function coerceTask(value: unknown): Task | null {
@@ -53,21 +60,55 @@ function coerceTasksByDate(value: unknown): TasksByDate {
   return result
 }
 
-function isPersistedEnvelope(value: unknown): value is { byDate: unknown; backlog: unknown } {
+function coerceScheduleEntry(value: unknown): ScheduleEntry | null {
+  if (!value || typeof value !== 'object') return null
+  const entry = value as Record<string, unknown>
+  if (typeof entry.id !== 'string' || typeof entry.taskId !== 'string') return null
+  if (entry.taskSource !== 'calendar' && entry.taskSource !== 'backlog') return null
+  if (typeof entry.startMinutes !== 'number' || typeof entry.durationMinutes !== 'number') {
+    return null
+  }
+
+  return {
+    id: entry.id,
+    taskId: entry.taskId,
+    taskSource: entry.taskSource as TaskSource,
+    startMinutes: entry.startMinutes,
+    durationMinutes: entry.durationMinutes,
+  }
+}
+
+function coerceScheduleByDate(value: unknown): ScheduleByDate {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result: ScheduleByDate = {}
+  for (const [key, entries] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(entries)) continue
+    const list = entries
+      .map(coerceScheduleEntry)
+      .filter((entry): entry is ScheduleEntry => entry !== null)
+    if (list.length > 0) result[key] = list
+  }
+  return result
+}
+
+function isPersistedEnvelope(
+  value: unknown,
+): value is { byDate: unknown; backlog: unknown; scheduleByDate?: unknown } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   return 'byDate' in value && 'backlog' in value
 }
 
-/** Normalize legacy date-map payloads and the new { byDate, backlog } envelope. */
+/** Normalize legacy date-map payloads and the new { byDate, backlog, scheduleByDate } envelope. */
 export function normalizePersistedTasks(value: unknown): PersistedTasks {
   if (isPersistedEnvelope(value)) {
     return {
       byDate: coerceTasksByDate(value.byDate),
       backlog: coerceTaskList(value.backlog),
+      scheduleByDate: coerceScheduleByDate(value.scheduleByDate ?? {}),
     }
   }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return { byDate: coerceTasksByDate(value), backlog: [] }
+    return { byDate: coerceTasksByDate(value), backlog: [], scheduleByDate: {} }
   }
   return emptyPersistedTasks()
 }
@@ -126,7 +167,11 @@ export async function saveCloudTasks(userId: string, tasks: PersistedTasks): Pro
 }
 
 function hasPersistedContent(tasks: PersistedTasks): boolean {
-  return Object.keys(tasks.byDate).length > 0 || tasks.backlog.length > 0
+  return (
+    Object.keys(tasks.byDate).length > 0 ||
+    tasks.backlog.length > 0 ||
+    Object.keys(tasks.scheduleByDate).length > 0
+  )
 }
 
 /**

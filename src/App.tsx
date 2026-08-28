@@ -11,6 +11,7 @@ import { Sidebar } from './components/Sidebar'
 import type { CalendarMode } from './components/CalendarGrid'
 import { CalendarPage } from './pages/CalendarPage'
 import { BacklogRoutePage } from './pages/BacklogRoutePage'
+import { SchedulePage } from './pages/SchedulePage'
 import { useAuthSession } from './useAuthSession'
 import { addMonths, addYears, dateKey, isSameMonth } from './dates'
 import {
@@ -24,7 +25,7 @@ import {
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { isSupabaseConfigured } from './lib/supabase'
 import { createTask, getProgressForDate, getTasksForDate } from './tasks'
-import type { Task, TaskSource, TasksByDate } from './types'
+import type { ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
 import './styles/index.css'
 
 applyTheme(loadTheme())
@@ -55,6 +56,7 @@ export default function App() {
   const [tasksOpen, setTasksOpen] = useState(false)
   const [tasksByDate, setTasksByDate] = useState<TasksByDate>({})
   const [backlog, setBacklog] = useState<Task[]>([])
+  const [scheduleByDate, setScheduleByDate] = useState<ScheduleByDate>({})
   const [tasksReady, setTasksReady] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [assignTaskId, setAssignTaskId] = useState<string | null>(null)
@@ -71,6 +73,7 @@ export default function App() {
       const local = loadLocalTasks()
       setTasksByDate(local.byDate)
       setBacklog(local.backlog)
+      setScheduleByDate(local.scheduleByDate)
       setTasksReady(true)
       skipNextSave.current = true
       return
@@ -80,6 +83,7 @@ export default function App() {
       activeUserId.current = null
       setTasksByDate({})
       setBacklog([])
+      setScheduleByDate({})
       setTasksReady(false)
       setTasksOpen(false)
       return
@@ -89,6 +93,7 @@ export default function App() {
       activeUserId.current = user.id
       setTasksByDate({})
       setBacklog([])
+      setScheduleByDate({})
       setTasksReady(false)
       setTasksOpen(false)
     }
@@ -102,6 +107,7 @@ export default function App() {
         skipNextSave.current = true
         setTasksByDate(tasks.byDate)
         setBacklog(tasks.backlog)
+        setScheduleByDate(tasks.scheduleByDate)
         setTasksReady(true)
       })
       .catch((err) => {
@@ -111,6 +117,7 @@ export default function App() {
         const local = loadLocalTasks(user.id)
         setTasksByDate(local.byDate)
         setBacklog(local.backlog)
+        setScheduleByDate(local.scheduleByDate)
         setTasksReady(true)
       })
 
@@ -122,7 +129,7 @@ export default function App() {
   useEffect(() => {
     if (!tasksReady) return
 
-    const payload = { byDate: tasksByDate, backlog }
+    const payload = { byDate: tasksByDate, backlog, scheduleByDate }
 
     if (isSupabaseConfigured && user) {
       saveLocalTasks(payload, user.id)
@@ -146,7 +153,7 @@ export default function App() {
     }, SAVE_DEBOUNCE_MS)
 
     return () => window.clearTimeout(timer)
-  }, [tasksByDate, backlog, tasksReady, user])
+  }, [tasksByDate, backlog, scheduleByDate, tasksReady, user])
 
   useEffect(() => {
     applyTheme(theme)
@@ -309,6 +316,7 @@ export default function App() {
   }
 
   function deleteTask(id: string, source: TaskSource) {
+    purgeScheduleForTask(id, source, selectedKey)
     if (source === 'backlog') {
       setBacklog((current) => current.filter((task) => task.id !== id))
       return
@@ -331,6 +339,144 @@ export default function App() {
         task.assignedDate === key ? { ...task, assignedDate: undefined } : task,
       ),
     )
+    setScheduleByDate((current) => {
+      if (!(key in current)) return current
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
+  }
+
+  function purgeScheduleForTask(
+    taskId: string,
+    taskSource: TaskSource,
+    dayKey?: string,
+  ) {
+    setScheduleByDate((current) => {
+      let changed = false
+      const copy = { ...current }
+      for (const key of Object.keys(copy)) {
+        if (dayKey && key !== dayKey) continue
+        const next = copy[key].filter(
+          (entry) => !(entry.taskId === taskId && entry.taskSource === taskSource),
+        )
+        if (next.length !== copy[key].length) {
+          changed = true
+          if (next.length === 0) delete copy[key]
+          else copy[key] = next
+        }
+      }
+      return changed ? copy : current
+    })
+  }
+
+  function addScheduleEntryForKey(key: string, entry: ScheduleEntry) {
+    setScheduleByDate((current) => ({
+      ...current,
+      [key]: [...(current[key] ?? []), entry],
+    }))
+  }
+
+  function updateScheduleEntryForKey(
+    key: string,
+    entryId: string,
+    patch: Partial<Pick<ScheduleEntry, 'startMinutes' | 'durationMinutes'>>,
+  ) {
+    setScheduleByDate((current) => {
+      const entries = current[key]
+      if (!entries) return current
+      return {
+        ...current,
+        [key]: entries.map((entry) =>
+          entry.id === entryId ? { ...entry, ...patch } : entry,
+        ),
+      }
+    })
+  }
+
+  function removeScheduleEntryForKey(key: string, entryId: string) {
+    setScheduleByDate((current) => {
+      const entries = current[key]
+      if (!entries) return current
+      const next = entries.filter((entry) => entry.id !== entryId)
+      const copy = { ...current }
+      if (next.length === 0) delete copy[key]
+      else copy[key] = next
+      return copy
+    })
+  }
+
+  function addTaskForKey(key: string, title: string) {
+    updateCalendarTasks(key, (tasks) => [...tasks, createTask(title)])
+  }
+
+  function toggleTaskForKey(key: string, id: string, source: TaskSource) {
+    if (source === 'backlog') {
+      setBacklog((current) =>
+        current.map((task) =>
+          task.id === id ? { ...task, completed: !task.completed } : task,
+        ),
+      )
+      return
+    }
+
+    updateCalendarTasks(key, (tasks) =>
+      tasks.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task,
+      ),
+    )
+  }
+
+  function updateTaskForKey(
+    key: string,
+    id: string,
+    source: TaskSource,
+    title: string,
+    description: string,
+  ) {
+    if (source === 'backlog') {
+      setBacklog((current) =>
+        current.map((task) =>
+          task.id === id ? { ...task, title, description } : task,
+        ),
+      )
+      return
+    }
+
+    updateCalendarTasks(key, (tasks) =>
+      tasks.map((task) =>
+        task.id === id ? { ...task, title, description } : task,
+      ),
+    )
+  }
+
+  function deleteTaskForKey(key: string, id: string, source: TaskSource) {
+    purgeScheduleForTask(id, source, key)
+    if (source === 'backlog') {
+      setBacklog((current) => current.filter((task) => task.id !== id))
+      return
+    }
+
+    updateCalendarTasks(key, (tasks) => tasks.filter((task) => task.id !== id))
+  }
+
+  function clearAllTasksForKey(key: string) {
+    setTasksByDate((current) => {
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
+    setBacklog((current) =>
+      current.map((task) =>
+        task.assignedDate === key ? { ...task, assignedDate: undefined } : task,
+      ),
+    )
+    setScheduleByDate((current) => {
+      if (!(key in current)) return current
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
   }
 
   function addBacklogTask(title: string) {
@@ -354,6 +500,7 @@ export default function App() {
   }
 
   function deleteBacklogTask(id: string) {
+    purgeScheduleForTask(id, 'backlog')
     setBacklog((current) => current.filter((task) => task.id !== id))
   }
 
@@ -461,6 +608,25 @@ export default function App() {
                   onAssign={setAssignTaskId}
                   onClearAll={clearAllBacklogTasks}
                   onCloseTasks={closeTasksPanel}
+                />
+              }
+            />
+            <Route
+              path="/schedule"
+              element={
+                <SchedulePage
+                  today={today}
+                  tasksByDate={tasksByDate}
+                  backlog={backlog}
+                  scheduleByDate={scheduleByDate}
+                  onAddTask={addTaskForKey}
+                  onToggleTask={toggleTaskForKey}
+                  onUpdateTask={updateTaskForKey}
+                  onDeleteTask={deleteTaskForKey}
+                  onClearAllTasks={clearAllTasksForKey}
+                  onAddScheduleEntry={addScheduleEntryForKey}
+                  onUpdateScheduleEntry={updateScheduleEntryForKey}
+                  onRemoveScheduleEntry={removeScheduleEntryForKey}
                 />
               }
             />

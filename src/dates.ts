@@ -17,6 +17,12 @@ export function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
 }
 
+export function addDays(date: Date, amount: number): Date {
+  const next = new Date(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+
 export function addMonths(date: Date, amount: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1)
 }
