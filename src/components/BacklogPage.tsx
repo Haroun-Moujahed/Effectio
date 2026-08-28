@@ -200,7 +200,7 @@ export function BacklogPage({
           <input
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="List item"
+            placeholder="Enter new task"
             aria-label="Add backlog item"
             maxLength={120}
           />

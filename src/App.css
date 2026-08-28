@@ -1344,8 +1344,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  max-width: 720px;
   margin: 0 auto;
+  padding: 20px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
