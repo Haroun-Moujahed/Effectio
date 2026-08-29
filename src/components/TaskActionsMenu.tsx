@@ -6,6 +6,7 @@ type TaskActionsMenuProps = {
   onOpen: () => void
   onClose: () => void
   onEdit: () => void
+  onView: () => void
   onDuplicate: () => void
   onDelete: () => void
 }
@@ -16,6 +17,7 @@ export function TaskActionsMenu({
   onOpen,
   onClose,
   onEdit,
+  onView,
   onDuplicate,
   onDelete,
 }: TaskActionsMenuProps) {
@@ -76,6 +78,15 @@ export function TaskActionsMenu({
             type="button"
             className="task-menu-item"
             role="menuitem"
+            onClick={() => runAction(onView)}
+          >
+            <ViewIcon />
+            <span>View</span>
+          </button>
+          <button
+            type="button"
+            className="task-menu-item"
+            role="menuitem"
             onClick={() => runAction(onEdit)}
           >
             <EditIcon />
@@ -111,6 +122,29 @@ function KebabIcon() {
       <circle cx="12" cy="5" r="1.75" fill="currentColor" />
       <circle cx="12" cy="12" r="1.75" fill="currentColor" />
       <circle cx="12" cy="19" r="1.75" fill="currentColor" />
+    </svg>
+  )
+}
+
+function ViewIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="task-menu-icon">
+      <path
+        d="M2.5 12C4.5 7.5 8 5 12 5s7.5 2.5 9.5 7c-2 4.5-5.5 7-9.5 7s-7.5-2.5-9.5-7z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="2.75"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
     </svg>
   )
 }

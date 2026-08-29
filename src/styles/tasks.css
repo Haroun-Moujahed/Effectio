@@ -269,8 +269,7 @@
 }
 
 .task-check:hover:not([aria-pressed="true"]) {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--text-muted));
-  color: color-mix(in srgb, var(--accent) 85%, transparent);
+  border-color: var(--accent);
 }
 
 .task-check-tick {
@@ -284,8 +283,8 @@
 }
 
 .task-check:hover:not([aria-pressed="true"]) .task-check-tick {
-  opacity: 0.55;
-  transform: scale(0.85);
+  opacity: 1;
+  transform: scale(1);
 }
 
 .task-text-btn {
@@ -302,12 +301,30 @@
 }
 
 .task-text {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
   font-size: 0.95rem;
   line-height: 1.35;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.task-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.22s ease;
+  pointer-events: none;
 }
 
 .task-char-counter {
@@ -332,8 +349,17 @@
 .task-list li.is-done .task-text,
 .backlog-item.is-done .task-text {
   color: var(--text-muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
+}
+
+.task-list li.is-done .task-text::after,
+.backlog-item.is-done .task-text::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-text::after {
+    transition: none;
+  }
 }
 
 .task-edit-input {

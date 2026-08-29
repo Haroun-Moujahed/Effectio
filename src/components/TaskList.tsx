@@ -62,6 +62,7 @@ export function TaskList({
   const [clearOpen, setClearOpen] = useState(false)
   const [contentReady, setContentReady] = useState(isSchedule)
   const [editTask, setEditTask] = useState<DisplayTask | null>(null)
+  const [editMode, setEditMode] = useState<'edit' | 'view'>('edit')
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null)
@@ -73,6 +74,7 @@ export function TaskList({
   useEffect(() => {
     setClearOpen(false)
     setEditTask(null)
+    setEditMode('edit')
     setOpenMenuKey(null)
     setDuplicateTask(null)
   }, [date])
@@ -87,6 +89,7 @@ export function TaskList({
       setContentReady(false)
       setClearOpen(false)
       setEditTask(null)
+      setEditMode('edit')
       setOpenMenuKey(null)
       setDuplicateTask(null)
       return
@@ -122,14 +125,16 @@ export function TaskList({
     setDraft('')
   }
 
-  function openEditModal(task: DisplayTask) {
+  function openTaskModal(task: DisplayTask, mode: 'edit' | 'view') {
     setEditTask(task)
+    setEditMode(mode)
     setEditTitle(task.title)
     setEditDescription(task.description)
   }
 
   function closeEditModal() {
     setEditTask(null)
+    setEditMode('edit')
     setEditTitle('')
     setEditDescription('')
   }
@@ -281,7 +286,8 @@ export function TaskList({
                       taskTitle={task.title}
                       onOpen={() => setOpenMenuKey(taskMenuKey(task))}
                       onClose={() => setOpenMenuKey(null)}
-                      onEdit={() => openEditModal(task)}
+                      onView={() => openTaskModal(task, 'view')}
+                      onEdit={() => openTaskModal(task, 'edit')}
                       onDuplicate={() => setDuplicateTask(task)}
                       onDelete={() => onDelete(task.id, task.source)}
                     />
@@ -355,6 +361,7 @@ export function TaskList({
 
       <TaskEditModal
         open={editTask !== null}
+        mode={editMode}
         title={editTitle}
         description={editDescription}
         onTitleChange={setEditTitle}
