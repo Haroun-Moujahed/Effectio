@@ -14,8 +14,9 @@ import { setScheduleDragImage, writeTaskDragData } from '../schedule'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
+import { TaskActionsMenu } from './TaskActionsMenu'
+import { DuplicateTaskDialog } from './DuplicateTaskDialog'
 import penIcon from '../assets/pen-icon.png'
-import taskIcon from '../assets/task-icon.png'
 
 type TaskListProps = {
   date: Date
@@ -31,6 +32,11 @@ type TaskListProps = {
     description: string,
   ) => void
   onDelete: (id: string, source: DisplayTask['source']) => void
+  onDuplicate: (
+    id: string,
+    source: DisplayTask['source'],
+    targetDates: string[],
+  ) => void
   onClearAll: () => void
   onClose: () => void
 }
@@ -46,6 +52,7 @@ export function TaskList({
   onToggle,
   onUpdate,
   onDelete,
+  onDuplicate,
   onClearAll,
   onClose,
 }: TaskListProps) {
@@ -57,6 +64,8 @@ export function TaskList({
   const [editTask, setEditTask] = useState<DisplayTask | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null)
+  const [duplicateTask, setDuplicateTask] = useState<DisplayTask | null>(null)
   const clearTitleId = useId()
   const clearDescId = useId()
   const clearConfirmRef = useRef<HTMLButtonElement>(null)
@@ -64,6 +73,8 @@ export function TaskList({
   useEffect(() => {
     setClearOpen(false)
     setEditTask(null)
+    setOpenMenuKey(null)
+    setDuplicateTask(null)
   }, [date])
 
   useEffect(() => {
@@ -76,6 +87,8 @@ export function TaskList({
       setContentReady(false)
       setClearOpen(false)
       setEditTask(null)
+      setOpenMenuKey(null)
+      setDuplicateTask(null)
       return
     }
 
@@ -146,6 +159,20 @@ export function TaskList({
 
   function openScheduleForDay() {
     navigate(`/schedule?date=${dateKey(date)}`)
+  }
+
+  function confirmDuplicate(selectedDates: Date[]) {
+    if (!duplicateTask || selectedDates.length === 0) return
+    onDuplicate(
+      duplicateTask.id,
+      duplicateTask.source,
+      selectedDates.map((item) => dateKey(item)),
+    )
+    setDuplicateTask(null)
+  }
+
+  function taskMenuKey(task: DisplayTask) {
+    return `${task.source}-${task.id}`
   }
 
   const completed = tasks.filter((task) => task.completed).length
@@ -249,28 +276,15 @@ export function TaskList({
 
                     <span className="task-text">{task.title}</span>
 
-                    <div className="task-actions">
-                      <Tooltip label="Edit task" placement="top">
-                        <button
-                          type="button"
-                          className="task-action"
-                          onClick={() => openEditModal(task)}
-                          aria-label={`Edit "${task.title}"`}
-                        >
-                          <MaskedIcon src={taskIcon} />
-                        </button>
-                      </Tooltip>
-                      <Tooltip label="Delete task" placement="top">
-                        <button
-                          type="button"
-                          className="task-action task-delete"
-                          onClick={() => onDelete(task.id, task.source)}
-                          aria-label={`Delete "${task.title}"`}
-                        >
-                          ×
-                        </button>
-                      </Tooltip>
-                    </div>
+                    <TaskActionsMenu
+                      open={openMenuKey === taskMenuKey(task)}
+                      taskTitle={task.title}
+                      onOpen={() => setOpenMenuKey(taskMenuKey(task))}
+                      onClose={() => setOpenMenuKey(null)}
+                      onEdit={() => openEditModal(task)}
+                      onDuplicate={() => setDuplicateTask(task)}
+                      onDelete={() => onDelete(task.id, task.source)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -330,6 +344,14 @@ export function TaskList({
           </div>
         </div>
       ) : null}
+
+      <DuplicateTaskDialog
+        open={duplicateTask !== null}
+        taskTitle={duplicateTask?.title ?? ''}
+        initialDate={date}
+        onConfirm={confirmDuplicate}
+        onClose={() => setDuplicateTask(null)}
+      />
 
       <TaskEditModal
         open={editTask !== null}

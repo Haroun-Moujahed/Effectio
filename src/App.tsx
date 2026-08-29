@@ -24,7 +24,7 @@ import {
 } from './storage'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { isSupabaseConfigured } from './lib/supabase'
-import { createTask, getProgressForDate, getTasksForDate } from './tasks'
+import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate } from './tasks'
 import type { ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
 import './styles/index.css'
 
@@ -327,6 +327,28 @@ export default function App() {
     )
   }
 
+  function duplicateTask(
+    id: string,
+    source: TaskSource,
+    targetDateKeys: string[],
+  ) {
+    if (targetDateKeys.length === 0) return
+
+    const original =
+      source === 'backlog'
+        ? backlog.find((task) => task.id === id)
+        : tasksByDate[selectedKey]?.find((task) => task.id === id)
+    if (!original) return
+
+    setTasksByDate((current) => {
+      const copy = { ...current }
+      for (const key of targetDateKeys) {
+        copy[key] = [...(copy[key] ?? []), cloneTaskFrom(original)]
+      }
+      return copy
+    })
+  }
+
   function clearAllTasksForDay() {
     const key = selectedKey
     setTasksByDate((current) => {
@@ -460,6 +482,29 @@ export default function App() {
     updateCalendarTasks(key, (tasks) => tasks.filter((task) => task.id !== id))
   }
 
+  function duplicateTaskForKey(
+    key: string,
+    id: string,
+    source: TaskSource,
+    targetDateKeys: string[],
+  ) {
+    if (targetDateKeys.length === 0) return
+
+    const original =
+      source === 'backlog'
+        ? backlog.find((task) => task.id === id)
+        : tasksByDate[key]?.find((task) => task.id === id)
+    if (!original) return
+
+    setTasksByDate((current) => {
+      const copy = { ...current }
+      for (const targetKey of targetDateKeys) {
+        copy[targetKey] = [...(copy[targetKey] ?? []), cloneTaskFrom(original)]
+      }
+      return copy
+    })
+  }
+
   function clearAllTasksForKey(key: string) {
     setTasksByDate((current) => {
       const copy = { ...current }
@@ -590,6 +635,7 @@ export default function App() {
                   onToggle={toggleTask}
                   onUpdate={updateTask}
                   onDelete={deleteTask}
+                  onDuplicate={duplicateTask}
                   onClearAll={clearAllTasksForDay}
                   onCloseTasks={closeTasksPanel}
                   onNavigateToDate={navigateToDate}
@@ -623,6 +669,7 @@ export default function App() {
                   onToggleTask={toggleTaskForKey}
                   onUpdateTask={updateTaskForKey}
                   onDeleteTask={deleteTaskForKey}
+                  onDuplicateTask={duplicateTaskForKey}
                   onClearAllTasks={clearAllTasksForKey}
                   onAddScheduleEntry={addScheduleEntryForKey}
                   onUpdateScheduleEntry={updateScheduleEntryForKey}

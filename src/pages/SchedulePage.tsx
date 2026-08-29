@@ -28,6 +28,12 @@ type SchedulePageProps = {
     description: string,
   ) => void
   onDeleteTask: (key: string, id: string, source: TaskSource) => void
+  onDuplicateTask: (
+    key: string,
+    id: string,
+    source: TaskSource,
+    targetDates: string[],
+  ) => void
   onClearAllTasks: (key: string) => void
   onAddScheduleEntry: (key: string, entry: ScheduleEntry) => void
   onUpdateScheduleEntry: (
@@ -47,6 +53,7 @@ export function SchedulePage({
   onToggleTask,
   onUpdateTask,
   onDeleteTask,
+  onDuplicateTask,
   onClearAllTasks,
   onAddScheduleEntry,
   onUpdateScheduleEntry,
@@ -121,6 +128,9 @@ export function SchedulePage({
             onUpdateTask(key, id, source, title, description)
           }
           onDelete={(id, source) => onDeleteTask(key, id, source)}
+          onDuplicate={(id, source, targetDates) =>
+            onDuplicateTask(key, id, source, targetDates)
+          }
           onClearAll={() => onClearAllTasks(key)}
           onClose={() => {}}
         />

@@ -354,6 +354,85 @@
   flex-shrink: 0;
 }
 
+.task-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.task-menu-trigger {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.task-menu-trigger:hover,
+.task-menu-trigger[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--nav-hover);
+}
+
+.task-menu-trigger svg {
+  width: 18px;
+  height: 18px;
+}
+
+.task-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 8;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.task-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.86rem;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.task-menu-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.task-menu-item:hover {
+  background: var(--nav-hover);
+}
+
+.task-menu-item.is-danger {
+  color: #ef4444;
+}
+
+.task-menu-item.is-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
 .task-action {
   width: 28px;
   height: 28px;

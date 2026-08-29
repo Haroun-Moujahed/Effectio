@@ -110,3 +110,17 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+.duplicate-dialog-description {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.duplicate-dialog-count {
+  margin: 0 0 14px;
+  color: var(--text-subtle);
+  font-size: 0.82rem;
+  text-align: center;
+}

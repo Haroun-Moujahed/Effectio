@@ -9,6 +9,15 @@ export function createTask(title: string): Task {
   }
 }
 
+export function cloneTaskFrom(task: Pick<Task, 'title' | 'description'>): Task {
+  return {
+    id: crypto.randomUUID(),
+    title: task.title,
+    description: task.description,
+    completed: false,
+  }
+}
+
 export function getTasksForDate(
   key: string,
   tasksByDate: TasksByDate,
