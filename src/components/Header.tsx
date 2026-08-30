@@ -1,6 +1,7 @@
 import logo from '../assets/logo.png'
 import themeIcon from '../assets/theme-icon.png'
 import userIcon from '../assets/user-icon.png'
+import sidebarOpenIcon from '../assets/sidebar-open.png'
 import type { Theme } from '../theme'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
@@ -11,6 +12,7 @@ type HeaderProps = {
   userName?: string | null
   userEmail?: string | null
   onSignOut?: () => void
+  onOpenMenu?: () => void
 }
 
 export function Header({
@@ -19,6 +21,7 @@ export function Header({
   userName,
   userEmail,
   onSignOut,
+  onOpenMenu,
 }: HeaderProps) {
   const nextTheme = theme === 'dark' ? 'light' : 'dark'
   const displayName = userName?.trim() || userEmail || null
@@ -26,6 +29,17 @@ export function Header({
 
   return (
     <header className="app-header">
+      {onOpenMenu ? (
+        <button
+          type="button"
+          className="icon-btn header-menu-btn"
+          onClick={onOpenMenu}
+          aria-label="Open menu"
+        >
+          <MaskedIcon src={sidebarOpenIcon} className="header-menu-icon" />
+        </button>
+      ) : null}
+
       <div className="brand">
         <img src={logo} alt="" className="brand-logo" />
         <h1>Effectio</h1>

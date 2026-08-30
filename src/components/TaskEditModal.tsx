@@ -94,7 +94,7 @@ export function TaskEditModal({
         )}
       </div>
 
-      <div className="task-edit-field">
+      <div className="task-edit-field task-edit-description-field">
         <span id={descriptionId}>Description</span>
         {isView ? (
           hasDescription ? (

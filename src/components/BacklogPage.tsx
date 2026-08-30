@@ -13,8 +13,8 @@ import { TASK_TITLE_MAX_LENGTH } from '../constants'
 import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
+import { TaskActionsMenu } from './TaskActionsMenu'
 import penIcon from '../assets/pen-icon.png'
-import taskIcon from '../assets/task-icon.png'
 import chevronIcon from '../assets/chevron.png'
 
 const PAGE_SIZE = 10
@@ -26,6 +26,7 @@ type BacklogPageProps = {
   onUpdate: (id: string, title: string, description: string) => void
   onDelete: (id: string) => void
   onAssign: (id: string) => void
+  onUnassign: (id: string) => void
   onClearAll: () => void
 }
 
@@ -36,6 +37,7 @@ export function BacklogPage({
   onUpdate,
   onDelete,
   onAssign,
+  onUnassign,
   onClearAll,
 }: BacklogPageProps) {
   const [draft, setDraft] = useState('')
@@ -44,8 +46,10 @@ export function BacklogPage({
   const [doneVisible, setDoneVisible] = useState(PAGE_SIZE)
   const [clearOpen, setClearOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
+  const [editMode, setEditMode] = useState<'edit' | 'view'>('edit')
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const activeSentinelRef = useRef<HTMLDivElement>(null)
   const doneSentinelRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -132,14 +136,16 @@ export function BacklogPage({
     setDraft('')
   }
 
-  function openEditModal(task: Task) {
+  function openTaskModal(task: Task, mode: 'edit' | 'view') {
     setEditTask(task)
+    setEditMode(mode)
     setEditTitle(task.title)
     setEditDescription(task.description)
   }
 
   function closeEditModal() {
     setEditTask(null)
+    setEditMode('edit')
     setEditTitle('')
     setEditDescription('')
   }
@@ -193,10 +199,17 @@ export function BacklogPage({
               <BacklogRow
                 key={task.id}
                 task={task}
+                menuOpen={openMenuId === task.id}
                 onToggle={() => onToggle(task.id)}
-                onOpenEdit={() => openEditModal(task)}
+                onOpenMenu={() => setOpenMenuId(task.id)}
+                onCloseMenu={() => setOpenMenuId(null)}
+                onView={() => openTaskModal(task, 'view')}
+                onEdit={() => openTaskModal(task, 'edit')}
                 onDelete={() => onDelete(task.id)}
                 onAssign={() => onAssign(task.id)}
+                onUnassign={
+                  task.assignedDate ? () => onUnassign(task.id) : undefined
+                }
               />
             ))}
           </ul>
@@ -250,10 +263,17 @@ export function BacklogPage({
                     <BacklogRow
                       key={task.id}
                       task={task}
+                      menuOpen={openMenuId === task.id}
                       onToggle={() => onToggle(task.id)}
-                      onOpenEdit={() => openEditModal(task)}
+                      onOpenMenu={() => setOpenMenuId(task.id)}
+                      onCloseMenu={() => setOpenMenuId(null)}
+                      onView={() => openTaskModal(task, 'view')}
+                      onEdit={() => openTaskModal(task, 'edit')}
                       onDelete={() => onDelete(task.id)}
                       onAssign={() => onAssign(task.id)}
+                      onUnassign={
+                        task.assignedDate ? () => onUnassign(task.id) : undefined
+                      }
                     />
                   ))}
                 </ul>
@@ -310,6 +330,7 @@ export function BacklogPage({
 
       <TaskEditModal
         open={editTask !== null}
+        mode={editMode}
         title={editTitle}
         description={editDescription}
         onTitleChange={setEditTitle}
@@ -323,18 +344,28 @@ export function BacklogPage({
 
 type BacklogRowProps = {
   task: Task
+  menuOpen: boolean
   onToggle: () => void
-  onOpenEdit: () => void
+  onOpenMenu: () => void
+  onCloseMenu: () => void
+  onView: () => void
+  onEdit: () => void
   onDelete: () => void
   onAssign: () => void
+  onUnassign?: () => void
 }
 
 function BacklogRow({
   task,
+  menuOpen,
   onToggle,
-  onOpenEdit,
+  onOpenMenu,
+  onCloseMenu,
+  onView,
+  onEdit,
   onDelete,
   onAssign,
+  onUnassign,
 }: BacklogRowProps) {
   const navigate = useNavigate()
   const assignedDate = task.assignedDate
@@ -375,38 +406,17 @@ function BacklogRow({
         </button>
       ) : null}
 
-      <div className="task-actions">
-        <Tooltip label="Assign to day" placement="top">
-          <button
-            type="button"
-            className="task-action"
-            onClick={onAssign}
-            aria-label={`Assign "${task.title}" to a day`}
-          >
-            <CalendarActionIcon />
-          </button>
-        </Tooltip>
-        <Tooltip label="Edit task" placement="top">
-          <button
-            type="button"
-            className="task-action"
-            onClick={onOpenEdit}
-            aria-label={`Edit "${task.title}"`}
-          >
-            <MaskedIcon src={taskIcon} />
-          </button>
-        </Tooltip>
-        <Tooltip label="Delete task" placement="top">
-          <button
-            type="button"
-            className="task-action task-delete"
-            onClick={onDelete}
-            aria-label={`Delete "${task.title}"`}
-          >
-            ×
-          </button>
-        </Tooltip>
-      </div>
+      <TaskActionsMenu
+        open={menuOpen}
+        taskTitle={task.title}
+        onOpen={onOpenMenu}
+        onClose={onCloseMenu}
+        onView={onView}
+        onEdit={onEdit}
+        onAssign={onAssign}
+        onUnassign={onUnassign}
+        onDelete={onDelete}
+      />
     </li>
   )
 }
@@ -421,34 +431,6 @@ function TickIcon() {
         strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function CalendarActionIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="backlog-calendar-icon"
-    >
-      <rect
-        x="4"
-        y="5.5"
-        width="16"
-        height="14"
-        rx="2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M8 3.5v3M16 3.5v3M4 10h16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
       />
     </svg>
   )

@@ -34,57 +34,112 @@
 
 @media (max-width: 700px) {
   .app {
-    overflow: hidden auto;
+    overflow: hidden;
   }
 
   .app-body {
-    flex-direction: column;
+    flex-direction: row;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .header-menu-btn {
+    display: grid;
+  }
+
+  .header-actions {
+    display: none;
+  }
+
+  .sidebar-footer {
+    display: flex;
+  }
+
+  .sidebar-toggle-desktop {
+    display: none;
+  }
+
+  .sidebar-toggle-mobile {
+    display: grid;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.48);
   }
 
   .app-sidebar,
   .app-sidebar.is-collapsed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    width: min(300px, 86vw);
+    height: 100svh;
+    padding: 16px 14px;
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 0 18px 18px 0;
+    box-shadow: var(--shadow);
+    transform: translateX(-105%);
+    transition: transform 0.24s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .app-sidebar.is-mobile-open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-top {
+    justify-content: flex-end;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-item {
+    justify-content: flex-start;
     width: 100%;
-    flex-direction: row;
-    align-items: center;
-    padding: 8px 10px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar-top {
-    margin: 0 8px 0 0;
-  }
-
-  .sidebar-nav {
-    flex-direction: row;
-    flex: 1;
-    gap: 4px;
-  }
-
-  .app-sidebar.is-collapsed .sidebar-item,
-  .sidebar-item {
-    width: auto;
-    flex: 1;
-    justify-content: center;
     margin: 0;
-    padding: 0 10px;
+    padding: 0 12px;
   }
 
   .app-sidebar.is-collapsed .sidebar-item-label {
-    display: none;
+    display: inline;
+  }
+
+  .app-sidebar.is-collapsed .sidebar-top > .tooltip-anchor,
+  .app-sidebar.is-collapsed .sidebar-nav > .tooltip-anchor,
+  .app-sidebar.is-collapsed .sidebar-footer > .tooltip-anchor {
+    display: block;
+    width: 100%;
+  }
+
+  .sidebar-top {
+    margin: 0 0 14px;
+    justify-content: flex-end;
   }
 
   .app-main {
     height: auto;
-    min-height: calc(100svh - 72px - 56px);
-    overflow: visible;
+    min-height: 0;
+    flex: 1;
+    width: 100%;
+    overflow: auto;
     padding: 12px;
   }
 
   .workspace {
     flex-direction: column;
     height: auto;
-    min-height: calc(100svh - 104px - 56px);
+    min-height: calc(100svh - 72px - 24px);
   }
 
   .workspace.tasks-open .calendar-card,
@@ -119,14 +174,6 @@
 
   .brand h1 {
     font-size: 1.3rem;
-  }
-
-  .header-actions {
-    right: 12px;
-  }
-
-  .header-actions > .tooltip-anchor:has(.header-user) {
-    display: none;
   }
 }
 

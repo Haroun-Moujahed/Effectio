@@ -99,6 +99,11 @@
   overflow: hidden;
 }
 
+.task-edit-modal > .modal-title,
+.task-edit-modal > .task-edit-field:not(.task-edit-description-field) {
+  flex-shrink: 0;
+}
+
 .task-edit-modal .modal-actions {
   margin-top: 8px;
   flex-shrink: 0;
@@ -111,9 +116,14 @@
   min-width: 0;
 }
 
-.task-edit-field:last-of-type {
-  flex: 1;
-  min-height: 0;
+.task-edit-description-field {
+  flex: 1 1 auto;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.task-edit-description-field > span {
+  flex-shrink: 0;
 }
 
 .task-edit-field span {
@@ -157,8 +167,11 @@
 }
 
 .task-view-description {
-  min-height: 280px;
-  max-height: min(48vh, 420px);
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--nav-bg);
@@ -178,12 +191,13 @@
 .rich-text-editor {
   display: flex;
   flex-direction: column;
-  min-height: 280px;
-  max-height: min(48vh, 420px);
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: min(50vh, 420px);
+  overflow: hidden;
   border: 1px solid var(--input-border);
   border-radius: 12px;
   background: var(--input-bg);
-  overflow: hidden;
 }
 
 .rich-text-toolbar {
@@ -221,15 +235,25 @@
 }
 
 .rich-text-content {
-  flex: 1;
-  min-height: 0;
   padding: 12px 14px;
-  overflow-y: auto;
   color: var(--text);
   font: inherit;
   line-height: 1.55;
   outline: none;
   scrollbar-width: thin;
+}
+
+.rich-text-editor .rich-text-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.task-view-description.rich-text-content {
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
 }
 
 .rich-text-content:empty::before {
@@ -262,13 +286,10 @@
     width: min(680px, calc(100vw - 32px));
   }
 
-  .rich-text-editor {
-    min-height: 240px;
-    max-height: min(42vh, 360px);
-  }
-
-  .task-view-description {
-    min-height: 240px;
+  .rich-text-editor,
+  .task-view-description,
+  .task-view-description.rich-text-content {
+    min-height: 180px;
     max-height: min(42vh, 360px);
   }
 }
@@ -283,17 +304,22 @@
     width: 100%;
     max-height: calc(100dvh - 24px);
     padding: 18px 16px;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
-  .rich-text-editor {
-    min-height: 200px;
+  .task-edit-description-field {
+    flex: 1 1 auto;
+    min-height: min(36dvh, 220px);
     max-height: none;
+    overflow: hidden;
   }
 
-  .task-view-description {
-    min-height: 200px;
-    max-height: none;
+  .rich-text-editor,
+  .task-view-description,
+  .task-view-description.rich-text-content {
+    flex: 1 1 auto;
+    min-height: min(36dvh, 220px);
+    max-height: min(52dvh, 420px);
   }
 
   .rich-text-toolbar {
@@ -301,11 +327,11 @@
   }
 
   .task-edit-modal .modal-actions {
-    position: sticky;
-    bottom: 0;
-    margin: 0 -16px -18px;
-    padding: 12px 16px 18px;
-    background: var(--card-bg);
+    position: static;
+    flex-shrink: 0;
+    margin-top: 4px;
+    padding-top: 12px;
     border-top: 1px solid var(--border);
+    background: transparent;
   }
 }

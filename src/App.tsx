@@ -13,6 +13,7 @@ import { CalendarPage } from './pages/CalendarPage'
 import { BacklogRoutePage } from './pages/BacklogRoutePage'
 import { SchedulePage } from './pages/SchedulePage'
 import { useAuthSession } from './useAuthSession'
+import { useMediaQuery } from './useMediaQuery'
 import { addMonths, addYears, dateKey, isSameMonth } from './dates'
 import {
   hydrateTasks,
@@ -50,6 +51,8 @@ export default function App() {
   const today = useMemo(() => new Date(), [])
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isMobileNav = useMediaQuery('(max-width: 700px)')
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('month')
   const [viewDate, setViewDate] = useState(() => new Date())
   const [selected, setSelected] = useState(() => new Date())
@@ -163,6 +166,10 @@ export default function App() {
   useEffect(() => {
     saveSidebarCollapsed(sidebarCollapsed)
   }, [sidebarCollapsed])
+
+  useEffect(() => {
+    if (!isMobileNav) setMobileMenuOpen(false)
+  }, [isMobileNav])
 
   const handleCalendarPrev = useCallback(() => {
     setViewDate((current) =>
@@ -570,6 +577,17 @@ export default function App() {
     setAssignTaskId(null)
   }
 
+  function unassignBacklogTask(id: string) {
+    const task = backlog.find((item) => item.id === id)
+    if (!task?.assignedDate) return
+    purgeScheduleForTask(id, 'backlog', task.assignedDate)
+    setBacklog((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, assignedDate: undefined } : item,
+      ),
+    )
+  }
+
   function handleSelectDay(date: Date) {
     setSelected(date)
     setTasksOpen(true)
@@ -598,6 +616,7 @@ export default function App() {
         userName={userName}
         userEmail={userEmail}
         onSignOut={isSupabaseConfigured ? signOut : undefined}
+        onOpenMenu={isMobileNav ? () => setMobileMenuOpen(true) : undefined}
       />
       {syncError ? (
         <div className="sync-banner" role="status">
@@ -611,6 +630,12 @@ export default function App() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+          isMobile={isMobileNav}
+          mobileOpen={isMobileNav && mobileMenuOpen}
+          onMobileClose={() => setMobileMenuOpen(false)}
+          theme={theme}
+          onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+          onSignOut={isSupabaseConfigured ? signOut : undefined}
         />
         <main className="app-main">
           <Routes>
@@ -652,6 +677,7 @@ export default function App() {
                   onUpdate={updateBacklogTask}
                   onDelete={deleteBacklogTask}
                   onAssign={setAssignTaskId}
+                  onUnassign={unassignBacklogTask}
                   onClearAll={clearAllBacklogTasks}
                   onCloseTasks={closeTasksPanel}
                 />

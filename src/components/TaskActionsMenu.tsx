@@ -1,13 +1,27 @@
-import { useEffect, useId, useRef } from 'react'
+import {
+  useFloating,
+  autoUpdate,
+  offset,
+  flip,
+  shift,
+  useClick,
+  useDismiss,
+  useRole,
+  useInteractions,
+  FloatingPortal,
+} from '@floating-ui/react'
+import { useId, type ReactNode } from 'react'
 
 type TaskActionsMenuProps = {
   open: boolean
   taskTitle: string
   onOpen: () => void
   onClose: () => void
-  onEdit: () => void
-  onView: () => void
-  onDuplicate: () => void
+  onView?: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onAssign?: () => void
+  onUnassign?: () => void
   onDelete: () => void
 }
 
@@ -16,37 +30,39 @@ export function TaskActionsMenu({
   taskTitle,
   onOpen,
   onClose,
-  onEdit,
   onView,
+  onEdit,
   onDuplicate,
+  onAssign,
+  onUnassign,
   onDelete,
 }: TaskActionsMenuProps) {
   const menuId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
+  const { refs, floatingStyles, context } = useFloating({
+    open,
+    onOpenChange(nextOpen) {
+      if (nextOpen) onOpen()
+      else onClose()
+    },
+    placement: 'bottom-end',
+    strategy: 'fixed',
+    whileElementsMounted: autoUpdate,
+    middleware: [
+      offset(4),
+      flip({ fallbackAxisSideDirection: 'start', padding: 8 }),
+      shift({ padding: 8 }),
+    ],
+  })
 
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        onClose()
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open, onClose])
+  const click = useClick(context)
+  const dismiss = useDismiss(context)
+  const role = useRole(context, { role: 'menu' })
+  const { getReferenceProps, getFloatingProps } = useInteractions([
+    click,
+    dismiss,
+    role,
+  ])
 
   function runAction(action: () => void) {
     onClose()
@@ -54,65 +70,90 @@ export function TaskActionsMenu({
   }
 
   return (
-    <div className="task-menu" ref={rootRef}>
+    <div className="task-menu">
       <button
         type="button"
         className="task-menu-trigger"
-        onClick={() => (open ? onClose() : onOpen())}
+        ref={refs.setReference}
+        {...getReferenceProps()}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-controls={menuId}
+        aria-controls={open ? menuId : undefined}
         aria-label={`Actions for "${taskTitle}"`}
       >
         <KebabIcon />
       </button>
 
       {open ? (
-        <div
-          id={menuId}
-          className="task-menu-dropdown"
-          role="menu"
-          aria-label={`Actions for "${taskTitle}"`}
-        >
-          <button
-            type="button"
-            className="task-menu-item"
-            role="menuitem"
-            onClick={() => runAction(onView)}
+        <FloatingPortal>
+          <div
+            id={menuId}
+            ref={refs.setFloating}
+            className="task-menu-dropdown"
+            style={floatingStyles}
+            role="menu"
+            aria-label={`Actions for "${taskTitle}"`}
+            {...getFloatingProps()}
           >
-            <ViewIcon />
-            <span>View</span>
-          </button>
-          <button
-            type="button"
-            className="task-menu-item"
-            role="menuitem"
-            onClick={() => runAction(onEdit)}
-          >
-            <EditIcon />
-            <span>Edit</span>
-          </button>
-          <button
-            type="button"
-            className="task-menu-item"
-            role="menuitem"
-            onClick={() => runAction(onDuplicate)}
-          >
-            <DuplicateIcon />
-            <span>Duplicate</span>
-          </button>
-          <button
-            type="button"
-            className="task-menu-item is-danger"
-            role="menuitem"
-            onClick={() => runAction(onDelete)}
-          >
-            <DeleteIcon />
-            <span>Delete</span>
-          </button>
-        </div>
+            {onView ? (
+              <MenuItem onClick={() => runAction(onView)}>
+                <ViewIcon />
+                <span>View</span>
+              </MenuItem>
+            ) : null}
+            {onEdit ? (
+              <MenuItem onClick={() => runAction(onEdit)}>
+                <EditIcon />
+                <span>Edit</span>
+              </MenuItem>
+            ) : null}
+            {onAssign ? (
+              <MenuItem onClick={() => runAction(onAssign)}>
+                <AssignIcon />
+                <span>Assign</span>
+              </MenuItem>
+            ) : null}
+            {onUnassign ? (
+              <MenuItem onClick={() => runAction(onUnassign)}>
+                <UnassignIcon />
+                <span>Unassign</span>
+              </MenuItem>
+            ) : null}
+            {onDuplicate ? (
+              <MenuItem onClick={() => runAction(onDuplicate)}>
+                <DuplicateIcon />
+                <span>Duplicate</span>
+              </MenuItem>
+            ) : null}
+            <MenuItem className="is-danger" onClick={() => runAction(onDelete)}>
+              <DeleteIcon />
+              <span>Delete</span>
+            </MenuItem>
+          </div>
+        </FloatingPortal>
       ) : null}
     </div>
+  )
+}
+
+function MenuItem({
+  children,
+  onClick,
+  className = '',
+}: {
+  children: ReactNode
+  onClick: () => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      className={`task-menu-item ${className}`.trim()}
+      role="menuitem"
+      onClick={onClick}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -167,6 +208,61 @@ function EditIcon() {
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function AssignIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="task-menu-icon">
+      <rect
+        x="4"
+        y="5.5"
+        width="16"
+        height="14"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8 3.5v3M16 3.5v3M4 10h16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function UnassignIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="task-menu-icon">
+      <rect
+        x="4"
+        y="5.5"
+        width="16"
+        height="14"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8 3.5v3M16 3.5v3M4 10h16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9 14.5h6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
       />
     </svg>
   )

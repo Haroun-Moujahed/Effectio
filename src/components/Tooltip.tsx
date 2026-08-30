@@ -38,7 +38,11 @@ export function Tooltip({ label, children, placement = 'bottom' }: TooltipProps)
     ],
   })
 
-  const hover = useHover(context, { move: false, delay: { open: 120, close: 60 } })
+  const hover = useHover(context, {
+    move: false,
+    delay: { open: 120, close: 60 },
+    mouseOnly: true,
+  })
   const focus = useFocus(context)
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
@@ -51,7 +55,18 @@ export function Tooltip({ label, children, placement = 'bottom' }: TooltipProps)
 
   return (
     <>
-      <span ref={refs.setReference} className="tooltip-anchor" {...getReferenceProps()}>
+      <span
+        ref={refs.setReference}
+        className="tooltip-anchor"
+        {...getReferenceProps({
+          onPointerDown() {
+            setOpen(false)
+          },
+          onClick() {
+            setOpen(false)
+          },
+        })}
+      >
         {children}
       </span>
       {open ? (

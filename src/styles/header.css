@@ -9,6 +9,17 @@
   background: var(--header-bg);
 }
 
+.header-menu-btn {
+  position: absolute;
+  left: 12px;
+  display: none;
+}
+
+.header-menu-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .brand {
   display: flex;
   align-items: center;
