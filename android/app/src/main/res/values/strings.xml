@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Effectio</string>
+    <string name="title_activity_main">Effectio</string>
+    <string name="package_name">com.effectio.app</string>
+    <string name="custom_url_scheme">com.effectio.app</string>
+</resources>

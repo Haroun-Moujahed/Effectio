@@ -1,3 +1,5 @@
+import { applyNativeTheme } from './native'
+
 export type Theme = 'light' | 'dark'
 
 const STORAGE_KEY = 'effectio.theme.v1'
@@ -20,4 +22,11 @@ export function saveTheme(theme: Theme): void {
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme
   document.documentElement.style.colorScheme = theme
+
+  const meta = document.querySelector('meta[name="theme-color"]')
+  if (meta) {
+    meta.setAttribute('content', theme === 'dark' ? '#05070b' : '#ffffff')
+  }
+
+  void applyNativeTheme(theme)
 }

@@ -24,6 +24,7 @@ import {
   saveSidebarCollapsed,
 } from './storage'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
+import { hideNativeSplash, useNativeBackButton } from './native'
 import { isSupabaseConfigured } from './lib/supabase'
 import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate } from './tasks'
 import type { ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
@@ -68,6 +69,33 @@ export default function App() {
 
   const userName = getUserDisplayName(user)
   const userEmail = user?.email ?? null
+
+  useNativeBackButton(() => {
+    if (document.querySelector('.modal-root, .assign-dialog-backdrop')) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      return true
+    }
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false)
+      return true
+    }
+    if (tasksOpen) {
+      setTasksOpen(false)
+      return true
+    }
+    return false
+  })
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void hideNativeSplash()
+    }, 2500)
+    if (ready) {
+      void hideNativeSplash()
+      window.clearTimeout(timeout)
+    }
+    return () => window.clearTimeout(timeout)
+  }, [ready])
 
   useEffect(() => {
     if (!ready) return

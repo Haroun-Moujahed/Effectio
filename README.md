@@ -16,6 +16,7 @@ Calendar-based daily todos with cloud sync. Click a day to manage its list; each
 
 - React 19 + TypeScript + Vite
 - Supabase (Auth + Postgres)
+- Capacitor (Android / iOS wrapper)
 - Resend (auth email delivery)
 - Deployed on Vercel
 
@@ -65,12 +66,29 @@ After deploy, open the link, create an account, and your tasks will sync everywh
 
 ## Scripts
 
-| Command           | Description              |
-| ----------------- | ------------------------ |
-| `npm run dev`     | Start the Vite dev server |
-| `npm run build`   | Typecheck + production build |
-| `npm run preview` | Preview the production build |
-| `npm run lint`    | Run oxlint                |
+| Command                | Description                          |
+| ---------------------- | ------------------------------------ |
+| `npm run dev`          | Start the Vite dev server            |
+| `npm run build`        | Typecheck + production build         |
+| `npm run build:mobile` | Production build + copy into native apps |
+| `npm run android`      | Open the Android project in Android Studio |
+| `npm run ios`          | Open the iOS project in Xcode (macOS) |
+| `npm run preview`      | Preview the production build         |
+| `npm run lint`         | Run oxlint                           |
+
+## Android app (Capacitor)
+
+The web app is wrapped with Capacitor. After cloning, install Android Studio, then:
+
+1. Copy `.env.example` to `.env.local` and fill in Supabase (same as web). Vite bakes these in at build time.
+2. `npm install`
+3. If `android/` is missing: `npx cap add android`
+4. `npm run build:mobile`
+5. `npm run android` — pick an emulator or a USB-debugged phone, press Run.
+
+In Supabase → **Authentication → URL Configuration**, also add `https://localhost` and `capacitor://localhost` to Redirect URLs if you use email confirmation / OAuth.
+
+Change `appId` in `capacitor.config.ts` (`com.effectio.app`) before publishing if you do not own that id.
 
 ## License
 
