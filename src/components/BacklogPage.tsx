@@ -14,6 +14,10 @@ import { MaskedIcon } from './MaskedIcon'
 import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
 import { TaskActionsMenu } from './TaskActionsMenu'
+import { TaskDescriptionBadge } from './TaskDescriptionBadge'
+import { TaskDragHandle } from './TaskDragHandle'
+import { hasTaskDescription } from '../tasks'
+import { useListReorder } from '../hooks/useListReorder'
 import penIcon from '../assets/pen-icon.png'
 import chevronIcon from '../assets/chevron.png'
 
@@ -27,6 +31,11 @@ type BacklogPageProps = {
   onDelete: (id: string) => void
   onAssign: (id: string) => void
   onUnassign: (id: string) => void
+  onReorder: (
+    fromIndex: number,
+    toIndex: number,
+    section: 'active' | 'done',
+  ) => void
   onClearAll: () => void
 }
 
@@ -38,6 +47,7 @@ export function BacklogPage({
   onDelete,
   onAssign,
   onUnassign,
+  onReorder,
   onClearAll,
 }: BacklogPageProps) {
   const [draft, setDraft] = useState('')
@@ -162,6 +172,12 @@ export function BacklogPage({
   const visibleDone = doneTasks.slice(0, doneVisible)
   const hasMoreActive = activeVisible < activeTasks.length
   const hasMoreDone = doneVisible < doneTasks.length
+  const activeReorder = useListReorder({
+    onReorder: (from, to) => onReorder(from, to, 'active'),
+  })
+  const doneReorder = useListReorder({
+    onReorder: (from, to) => onReorder(from, to, 'done'),
+  })
 
   return (
     <section className="backlog-page">
@@ -195,10 +211,12 @@ export function BacklogPage({
           </p>
         ) : (
           <ul className="backlog-list">
-            {visibleActive.map((task) => (
+            {visibleActive.map((task, index) => (
               <BacklogRow
                 key={task.id}
                 task={task}
+                index={index}
+                reorder={activeReorder}
                 menuOpen={openMenuId === task.id}
                 onToggle={() => onToggle(task.id)}
                 onOpenMenu={() => setOpenMenuId(task.id)}
@@ -259,10 +277,12 @@ export function BacklogPage({
             >
               <div className="backlog-done-panel-inner">
                 <ul className="backlog-list">
-                  {visibleDone.map((task) => (
+                  {visibleDone.map((task, index) => (
                     <BacklogRow
                       key={task.id}
                       task={task}
+                      index={index}
+                      reorder={doneReorder}
                       menuOpen={openMenuId === task.id}
                       onToggle={() => onToggle(task.id)}
                       onOpenMenu={() => setOpenMenuId(task.id)}
@@ -344,6 +364,8 @@ export function BacklogPage({
 
 type BacklogRowProps = {
   task: Task
+  index: number
+  reorder: ReturnType<typeof useListReorder>
   menuOpen: boolean
   onToggle: () => void
   onOpenMenu: () => void
@@ -357,6 +379,8 @@ type BacklogRowProps = {
 
 function BacklogRow({
   task,
+  index,
+  reorder,
   menuOpen,
   onToggle,
   onOpenMenu,
@@ -379,7 +403,16 @@ function BacklogRow({
   }
 
   return (
-    <li className={`backlog-item ${task.completed ? 'is-done' : ''}`}>
+    <li
+      className={`backlog-item ${task.completed ? 'is-done' : ''} ${reorder.itemClassName(index)}`.trim()}
+      onDragOver={(event) => reorder.handleDragOver(event, index)}
+      onDrop={(event) => reorder.handleDrop(event, index)}
+    >
+      <TaskDragHandle
+        label={`Reorder "${task.title}"`}
+        onDragStart={(event) => reorder.handleDragStart(event, index)}
+        onDragEnd={reorder.handleDragEnd}
+      />
       <button
         type="button"
         className="task-check"
@@ -406,17 +439,20 @@ function BacklogRow({
         </button>
       ) : null}
 
-      <TaskActionsMenu
-        open={menuOpen}
-        taskTitle={task.title}
-        onOpen={onOpenMenu}
-        onClose={onCloseMenu}
-        onView={onView}
-        onEdit={onEdit}
-        onAssign={onAssign}
-        onUnassign={onUnassign}
-        onDelete={onDelete}
-      />
+      <div className="task-actions">
+        {hasTaskDescription(task.description) ? <TaskDescriptionBadge /> : null}
+        <TaskActionsMenu
+          open={menuOpen}
+          taskTitle={task.title}
+          onOpen={onOpenMenu}
+          onClose={onCloseMenu}
+          onView={onView}
+          onEdit={onEdit}
+          onAssign={onAssign}
+          onUnassign={onUnassign}
+          onDelete={onDelete}
+        />
+      </div>
     </li>
   )
 }

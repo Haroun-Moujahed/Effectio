@@ -52,7 +52,7 @@
 
 .backlog-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 48px;
@@ -60,7 +60,7 @@
 }
 
 .backlog-item:not(:has(.backlog-assigned-date)) {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
 }
 
 .backlog-assigned-date {

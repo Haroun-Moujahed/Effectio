@@ -16,7 +16,7 @@ function storageKey(userId: string): string {
 }
 
 export function emptyPersistedTasks(): PersistedTasks {
-  return { byDate: {}, backlog: [], scheduleByDate: {} }
+  return { byDate: {}, backlog: [], scheduleByDate: {}, dayTaskOrder: {} }
 }
 
 function coerceTask(value: unknown): Task | null {
@@ -91,9 +91,25 @@ function coerceScheduleByDate(value: unknown): ScheduleByDate {
   return result
 }
 
+function coerceDayTaskOrder(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result: Record<string, string[]> = {}
+  for (const [key, items] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(items)) continue
+    const list = items.filter((item): item is string => typeof item === 'string')
+    if (list.length > 0) result[key] = list
+  }
+  return result
+}
+
 function isPersistedEnvelope(
   value: unknown,
-): value is { byDate: unknown; backlog: unknown; scheduleByDate?: unknown } {
+): value is {
+  byDate: unknown
+  backlog: unknown
+  scheduleByDate?: unknown
+  dayTaskOrder?: unknown
+} {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   return 'byDate' in value && 'backlog' in value
 }
@@ -105,10 +121,16 @@ export function normalizePersistedTasks(value: unknown): PersistedTasks {
       byDate: coerceTasksByDate(value.byDate),
       backlog: coerceTaskList(value.backlog),
       scheduleByDate: coerceScheduleByDate(value.scheduleByDate ?? {}),
+      dayTaskOrder: coerceDayTaskOrder(value.dayTaskOrder),
     }
   }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return { byDate: coerceTasksByDate(value), backlog: [], scheduleByDate: {} }
+    return {
+      byDate: coerceTasksByDate(value),
+      backlog: [],
+      scheduleByDate: {},
+      dayTaskOrder: {},
+    }
   }
   return emptyPersistedTasks()
 }
@@ -170,7 +192,8 @@ function hasPersistedContent(tasks: PersistedTasks): boolean {
   return (
     Object.keys(tasks.byDate).length > 0 ||
     tasks.backlog.length > 0 ||
-    Object.keys(tasks.scheduleByDate).length > 0
+    Object.keys(tasks.scheduleByDate).length > 0 ||
+    Object.keys(tasks.dayTaskOrder).length > 0
   )
 }
 

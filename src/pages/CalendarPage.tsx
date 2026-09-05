@@ -33,6 +33,7 @@ type CalendarPageProps = {
     source: TaskSource,
     targetDates: string[],
   ) => void
+  onReorder: (fromIndex: number, toIndex: number) => void
   onClearAll: () => void
   onCloseTasks: () => void
   onNavigateToDate: (date: Date) => void
@@ -57,6 +58,7 @@ export function CalendarPage({
   onUpdate,
   onDelete,
   onDuplicate,
+  onReorder,
   onClearAll,
   onCloseTasks,
   onNavigateToDate,
@@ -99,6 +101,7 @@ export function CalendarPage({
           onUpdate={onUpdate}
           onDelete={onDelete}
           onDuplicate={onDuplicate}
+          onReorder={onReorder}
           onClearAll={onClearAll}
           onClose={onCloseTasks}
         />

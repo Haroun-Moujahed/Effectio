@@ -26,8 +26,9 @@ import {
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { hideNativeSplash, useNativeBackButton } from './native'
 import { isSupabaseConfigured } from './lib/supabase'
-import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate } from './tasks'
-import type { ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
+import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
+import type { DayTaskOrder, ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
+import { BootSkeleton } from './components/BootSkeleton'
 import './styles/index.css'
 
 applyTheme(loadTheme())
@@ -61,6 +62,7 @@ export default function App() {
   const [tasksByDate, setTasksByDate] = useState<TasksByDate>({})
   const [backlog, setBacklog] = useState<Task[]>([])
   const [scheduleByDate, setScheduleByDate] = useState<ScheduleByDate>({})
+  const [dayTaskOrder, setDayTaskOrder] = useState<DayTaskOrder>({})
   const [tasksReady, setTasksReady] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [assignTaskId, setAssignTaskId] = useState<string | null>(null)
@@ -105,6 +107,7 @@ export default function App() {
       setTasksByDate(local.byDate)
       setBacklog(local.backlog)
       setScheduleByDate(local.scheduleByDate)
+      setDayTaskOrder(local.dayTaskOrder)
       setTasksReady(true)
       skipNextSave.current = true
       return
@@ -115,6 +118,7 @@ export default function App() {
       setTasksByDate({})
       setBacklog([])
       setScheduleByDate({})
+      setDayTaskOrder({})
       setTasksReady(false)
       setTasksOpen(false)
       return
@@ -125,6 +129,7 @@ export default function App() {
       setTasksByDate({})
       setBacklog([])
       setScheduleByDate({})
+      setDayTaskOrder({})
       setTasksReady(false)
       setTasksOpen(false)
     }
@@ -139,6 +144,7 @@ export default function App() {
         setTasksByDate(tasks.byDate)
         setBacklog(tasks.backlog)
         setScheduleByDate(tasks.scheduleByDate)
+        setDayTaskOrder(tasks.dayTaskOrder)
         setTasksReady(true)
       })
       .catch((err) => {
@@ -149,6 +155,7 @@ export default function App() {
         setTasksByDate(local.byDate)
         setBacklog(local.backlog)
         setScheduleByDate(local.scheduleByDate)
+        setDayTaskOrder(local.dayTaskOrder)
         setTasksReady(true)
       })
 
@@ -160,7 +167,7 @@ export default function App() {
   useEffect(() => {
     if (!tasksReady) return
 
-    const payload = { byDate: tasksByDate, backlog, scheduleByDate }
+    const payload = { byDate: tasksByDate, backlog, scheduleByDate, dayTaskOrder }
 
     if (isSupabaseConfigured && user) {
       saveLocalTasks(payload, user.id)
@@ -184,7 +191,7 @@ export default function App() {
     }, SAVE_DEBOUNCE_MS)
 
     return () => window.clearTimeout(timer)
-  }, [tasksByDate, backlog, scheduleByDate, tasksReady, user])
+  }, [tasksByDate, backlog, scheduleByDate, dayTaskOrder, tasksReady, user])
 
   useEffect(() => {
     applyTheme(theme)
@@ -224,8 +231,12 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="app">
-        <div className="boot-screen">Loading…</div>
+      <div className="app" aria-busy="true" aria-label="Loading">
+        <Header
+          theme={theme}
+          onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+        />
+        <BootSkeleton />
       </div>
     )
   }
@@ -271,7 +282,7 @@ export default function App() {
 
   if (tasksLoading) {
     return (
-      <div className="app">
+      <div className="app" aria-busy="true" aria-label="Loading your tasks">
         <Header
           theme={theme}
           onToggleTheme={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
@@ -279,13 +290,13 @@ export default function App() {
           userEmail={userEmail}
           onSignOut={signOut}
         />
-        <div className="boot-screen">Loading your tasks…</div>
+        <BootSkeleton />
       </div>
     )
   }
 
   const selectedKey = dateKey(selected)
-  const selectedTasks = getTasksForDate(selectedKey, tasksByDate, backlog)
+  const selectedTasks = getTasksForDate(selectedKey, tasksByDate, backlog, dayTaskOrder[selectedKey])
   const assignTask = assignTaskId
     ? backlog.find((task) => task.id === assignTaskId) ?? null
     : null
@@ -397,6 +408,12 @@ export default function App() {
       ),
     )
     setScheduleByDate((current) => {
+      if (!(key in current)) return current
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
+    setDayTaskOrder((current) => {
       if (!(key in current)) return current
       const copy = { ...current }
       delete copy[key]
@@ -557,6 +574,12 @@ export default function App() {
       delete copy[key]
       return copy
     })
+    setDayTaskOrder((current) => {
+      if (!(key in current)) return current
+      const copy = { ...current }
+      delete copy[key]
+      return copy
+    })
   }
 
   function addBacklogTask(title: string) {
@@ -609,11 +632,54 @@ export default function App() {
     const task = backlog.find((item) => item.id === id)
     if (!task?.assignedDate) return
     purgeScheduleForTask(id, 'backlog', task.assignedDate)
+    const assignedKey = task.assignedDate
     setBacklog((current) =>
       current.map((item) =>
         item.id === id ? { ...item, assignedDate: undefined } : item,
       ),
     )
+    setDayTaskOrder((current) => {
+      const order = current[assignedKey]
+      if (!order) return current
+      const next = order.filter((item) => item !== `backlog:${id}`)
+      const copy = { ...current }
+      if (next.length === 0) delete copy[assignedKey]
+      else copy[assignedKey] = next
+      return copy
+    })
+  }
+
+  function reorderTasksForKey(key: string, fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return
+    const tasks = getTasksForDate(key, tasksByDate, backlog, dayTaskOrder[key])
+    const next = reorderItems(tasks, fromIndex, toIndex)
+    if (next === tasks) return
+
+    setDayTaskOrder((current) => ({
+      ...current,
+      [key]: next.map(taskListKey),
+    }))
+
+    updateCalendarTasks(key, (calendarTasks) => {
+      const byId = new Map(calendarTasks.map((task) => [task.id, task]))
+      return next
+        .filter((task) => task.source === 'calendar')
+        .map((task) => byId.get(task.id))
+        .filter((task): task is Task => Boolean(task))
+    })
+  }
+
+  function reorderBacklogTasks(
+    fromIndex: number,
+    toIndex: number,
+    section: 'active' | 'done',
+  ) {
+    setBacklog((current) => {
+      const sectionIds = current
+        .filter((task) => (section === 'done' ? task.completed : !task.completed))
+        .map((task) => task.id)
+      return reorderFilteredByIds(current, sectionIds, fromIndex, toIndex)
+    })
   }
 
   function handleSelectDay(date: Date) {
@@ -694,6 +760,7 @@ export default function App() {
                   onUpdate={updateTask}
                   onDelete={deleteTask}
                   onDuplicate={duplicateTask}
+                  onReorder={(from, to) => reorderTasksForKey(selectedKey, from, to)}
                   onClearAll={clearAllTasksForDay}
                   onCloseTasks={closeTasksPanel}
                   onNavigateToDate={navigateToDate}
@@ -711,6 +778,7 @@ export default function App() {
                   onDelete={deleteBacklogTask}
                   onAssign={setAssignTaskId}
                   onUnassign={unassignBacklogTask}
+                  onReorder={reorderBacklogTasks}
                   onClearAll={clearAllBacklogTasks}
                   onCloseTasks={closeTasksPanel}
                 />
@@ -724,11 +792,13 @@ export default function App() {
                   tasksByDate={tasksByDate}
                   backlog={backlog}
                   scheduleByDate={scheduleByDate}
+                  dayTaskOrder={dayTaskOrder}
                   onAddTask={addTaskForKey}
                   onToggleTask={toggleTaskForKey}
                   onUpdateTask={updateTaskForKey}
                   onDeleteTask={deleteTaskForKey}
                   onDuplicateTask={duplicateTaskForKey}
+                  onReorderTasks={reorderTasksForKey}
                   onClearAllTasks={clearAllTasksForKey}
                   onAddScheduleEntry={addScheduleEntryForKey}
                   onUpdateScheduleEntry={updateScheduleEntryForKey}

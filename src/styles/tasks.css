@@ -244,12 +244,81 @@
 
 .task-list li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   min-height: 48px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.task-list li.is-dragging,
+.backlog-item.is-dragging {
+  opacity: 0.42;
+}
+
+.task-list li.is-drop-target,
+.backlog-item.is-drop-target {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.task-drag-handle {
+  width: 18px;
+  height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.task-drag-handle:hover,
+.task-drag-handle:focus-visible {
+  color: var(--text-muted);
+  background: var(--nav-hover);
+}
+
+.task-drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-drag-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  grid-template-rows: repeat(3, 4px);
+  gap: 2px;
+}
+
+.task-drag-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.task-description-badge {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--text-muted);
+}
+
+.task-description-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.task-description-badge:hover,
+.task-description-badge:focus-visible {
+  color: var(--text);
+  background: var(--nav-hover);
 }
 
 .task-check {

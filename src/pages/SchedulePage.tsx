@@ -18,6 +18,7 @@ type SchedulePageProps = {
   tasksByDate: TasksByDate
   backlog: Task[]
   scheduleByDate: ScheduleByDate
+  dayTaskOrder: Record<string, string[]>
   onAddTask: (key: string, title: string) => void
   onToggleTask: (key: string, id: string, source: TaskSource) => void
   onUpdateTask: (
@@ -34,6 +35,7 @@ type SchedulePageProps = {
     source: TaskSource,
     targetDates: string[],
   ) => void
+  onReorderTasks: (key: string, fromIndex: number, toIndex: number) => void
   onClearAllTasks: (key: string) => void
   onAddScheduleEntry: (key: string, entry: ScheduleEntry) => void
   onUpdateScheduleEntry: (
@@ -49,11 +51,13 @@ export function SchedulePage({
   tasksByDate,
   backlog,
   scheduleByDate,
+  dayTaskOrder,
   onAddTask,
   onToggleTask,
   onUpdateTask,
   onDeleteTask,
   onDuplicateTask,
+  onReorderTasks,
   onClearAllTasks,
   onAddScheduleEntry,
   onUpdateScheduleEntry,
@@ -78,8 +82,8 @@ export function SchedulePage({
 
   const key = dateKey(date)
   const tasks = useMemo(
-    () => getTasksForDate(key, tasksByDate, backlog),
-    [key, tasksByDate, backlog],
+    () => getTasksForDate(key, tasksByDate, backlog, dayTaskOrder[key]),
+    [key, tasksByDate, backlog, dayTaskOrder],
   )
   const entries = scheduleByDate[key] ?? []
 
@@ -131,6 +135,7 @@ export function SchedulePage({
           onDuplicate={(id, source, targetDates) =>
             onDuplicateTask(key, id, source, targetDates)
           }
+          onReorder={(from, to) => onReorderTasks(key, from, to)}
           onClearAll={() => onClearAllTasks(key)}
           onClose={() => {}}
         />

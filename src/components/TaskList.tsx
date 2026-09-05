@@ -16,6 +16,10 @@ import { Tooltip } from './Tooltip'
 import { TaskEditModal } from './TaskEditModal'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import { DuplicateTaskDialog } from './DuplicateTaskDialog'
+import { TaskDescriptionBadge } from './TaskDescriptionBadge'
+import { TaskDragHandle } from './TaskDragHandle'
+import { hasTaskDescription } from '../tasks'
+import { useListReorder } from '../hooks/useListReorder'
 import penIcon from '../assets/pen-icon.png'
 
 type TaskListProps = {
@@ -37,6 +41,7 @@ type TaskListProps = {
     source: DisplayTask['source'],
     targetDates: string[],
   ) => void
+  onReorder: (fromIndex: number, toIndex: number) => void
   onClearAll: () => void
   onClose: () => void
 }
@@ -53,6 +58,7 @@ export function TaskList({
   onUpdate,
   onDelete,
   onDuplicate,
+  onReorder,
   onClearAll,
   onClose,
 }: TaskListProps) {
@@ -70,6 +76,13 @@ export function TaskList({
   const clearTitleId = useId()
   const clearDescId = useId()
   const clearConfirmRef = useRef<HTMLButtonElement>(null)
+  const {
+    handleDragStart: handleReorderStart,
+    handleDragOver: handleReorderOver,
+    handleDrop: handleReorderDrop,
+    handleDragEnd: handleReorderEnd,
+    itemClassName: reorderClassName,
+  } = useListReorder({ onReorder })
 
   useEffect(() => {
     setClearOpen(false)
@@ -147,9 +160,9 @@ export function TaskList({
     closeEditModal()
   }
 
-  function handleTaskDragStart(event: DragEvent<HTMLLIElement>, task: DisplayTask) {
+  function handleTaskDragStart(event: DragEvent<HTMLElement>, task: DisplayTask) {
     const target = event.target as HTMLElement
-    if (target.closest('button')) {
+    if (target.closest('.task-drag-handle, button, .task-description-badge')) {
       event.preventDefault()
       return
     }
@@ -254,17 +267,18 @@ export function TaskList({
               <p className="empty-hint">Add something you want to get done today.</p>
             ) : (
               <ul className="task-list">
-                {tasks.map((task) => (
+                {tasks.map((task, index) => (
                   <li
                     key={`${task.source}-${task.id}`}
-                    className={`${task.completed ? 'is-done' : ''} ${isSchedule ? 'schedule-task-draggable' : ''}`}
-                    draggable={isSchedule}
-                    onDragStart={
-                      isSchedule
-                        ? (event) => handleTaskDragStart(event, task)
-                        : undefined
-                    }
+                    className={`${task.completed ? 'is-done' : ''} ${isSchedule ? 'schedule-task-draggable' : ''} ${reorderClassName(index)}`.trim()}
+                    onDragOver={(event) => handleReorderOver(event, index)}
+                    onDrop={(event) => handleReorderDrop(event, index)}
                   >
+                    <TaskDragHandle
+                      label={`Reorder "${task.title}"`}
+                      onDragStart={(event) => handleReorderStart(event, index)}
+                      onDragEnd={handleReorderEnd}
+                    />
                     <button
                       type="button"
                       className="task-check"
@@ -279,18 +293,33 @@ export function TaskList({
                       <TickIcon />
                     </button>
 
-                    <span className="task-text">{task.title}</span>
+                    <span
+                      className={`task-text${isSchedule ? ' task-schedule-drag' : ''}`}
+                      draggable={isSchedule}
+                      onDragStart={
+                        isSchedule
+                          ? (event) => handleTaskDragStart(event, task)
+                          : undefined
+                      }
+                    >
+                      {task.title}
+                    </span>
 
-                    <TaskActionsMenu
-                      open={openMenuKey === taskMenuKey(task)}
-                      taskTitle={task.title}
-                      onOpen={() => setOpenMenuKey(taskMenuKey(task))}
-                      onClose={() => setOpenMenuKey(null)}
-                      onView={() => openTaskModal(task, 'view')}
-                      onEdit={() => openTaskModal(task, 'edit')}
-                      onDuplicate={() => setDuplicateTask(task)}
-                      onDelete={() => onDelete(task.id, task.source)}
-                    />
+                    <div className="task-actions">
+                      {hasTaskDescription(task.description) ? (
+                        <TaskDescriptionBadge />
+                      ) : null}
+                      <TaskActionsMenu
+                        open={openMenuKey === taskMenuKey(task)}
+                        taskTitle={task.title}
+                        onOpen={() => setOpenMenuKey(taskMenuKey(task))}
+                        onClose={() => setOpenMenuKey(null)}
+                        onView={() => openTaskModal(task, 'view')}
+                        onEdit={() => openTaskModal(task, 'edit')}
+                        onDuplicate={() => setDuplicateTask(task)}
+                        onDelete={() => onDelete(task.id, task.source)}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>

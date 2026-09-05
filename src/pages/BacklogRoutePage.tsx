@@ -10,6 +10,11 @@ type BacklogRoutePageProps = {
   onDelete: (id: string) => void
   onAssign: (id: string) => void
   onUnassign: (id: string) => void
+  onReorder: (
+    fromIndex: number,
+    toIndex: number,
+    section: 'active' | 'done',
+  ) => void
   onClearAll: () => void
   onCloseTasks: () => void
 }
@@ -22,6 +27,7 @@ export function BacklogRoutePage({
   onDelete,
   onAssign,
   onUnassign,
+  onReorder,
   onClearAll,
   onCloseTasks,
 }: BacklogRoutePageProps) {
@@ -38,6 +44,7 @@ export function BacklogRoutePage({
       onDelete={onDelete}
       onAssign={onAssign}
       onUnassign={onUnassign}
+      onReorder={onReorder}
       onClearAll={onClearAll}
     />
   )

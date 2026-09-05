@@ -205,9 +205,14 @@
   cursor: grabbing;
 }
 
+.schedule-task-draggable .task-drag-handle,
 .schedule-task-draggable .task-check,
 .schedule-task-draggable .task-action {
   cursor: pointer;
+}
+
+.schedule-task-draggable .task-drag-handle {
+  cursor: grab;
 }
 
 .schedule-task-draggable .task-text {

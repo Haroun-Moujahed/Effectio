@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { TASK_DESCRIPTION_MAX_LENGTH, TASK_TITLE_MAX_LENGTH } from '../constants'
+import { hasTaskDescription } from '../tasks'
 import { RichTextEditor } from './RichTextEditor'
 
 type TaskEditModalProps = {
@@ -32,8 +33,17 @@ export function TaskEditModal({
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
+  const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef<number>(0)
   const titleRemaining = TASK_TITLE_MAX_LENGTH - title.length
-  const hasDescription = description.trim().length > 0
+  const hasDescription = hasTaskDescription(description)
+
+  useEffect(() => {
+    if (!open) {
+      setCopied(false)
+      window.clearTimeout(copyTimerRef.current)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -57,6 +67,25 @@ export function TaskEditModal({
   }, [open, isView])
 
   if (!open) return null
+
+  function htmlToPlainText(html: string) {
+    const node = document.createElement('div')
+    node.innerHTML = html
+    return (node.innerText || node.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
+  }
+
+  async function copyDescription() {
+    const text = htmlToPlainText(description)
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      window.clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -98,11 +127,21 @@ export function TaskEditModal({
         <span id={descriptionId}>Description</span>
         {isView ? (
           hasDescription ? (
-            <div
-              className="task-view-description rich-text-content"
-              aria-labelledby={descriptionId}
-              dangerouslySetInnerHTML={{ __html: description }}
-            />
+            <div className="task-view-description-wrap">
+              <button
+                type="button"
+                className="task-view-copy"
+                onClick={() => void copyDescription()}
+                aria-label={copied ? 'Description copied' : 'Copy description'}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+              <div
+                className="task-view-description rich-text-content"
+                aria-labelledby={descriptionId}
+                dangerouslySetInnerHTML={{ __html: description }}
+              />
+            </div>
           ) : (
             <p className="task-view-empty" aria-labelledby={descriptionId}>
               No description

@@ -24,10 +24,13 @@ export type ScheduleEntry = {
 
 export type ScheduleByDate = Record<string, ScheduleEntry[]>
 
+export type DayTaskOrder = Record<string, string[]>
+
 export type PersistedTasks = {
   byDate: TasksByDate
   backlog: Task[]
   scheduleByDate: ScheduleByDate
+  dayTaskOrder: DayTaskOrder
 }
 
 export type DayProgress = {
@@ -44,4 +47,5 @@ export type DisplayScheduleEntry = ScheduleEntry & {
 }
 
 export const TASK_DRAG_TYPE = 'application/x-effectio-task'
+export const TASK_REORDER_TYPE = 'application/x-effectio-task-reorder'
 export const ENTRY_DRAG_TYPE = 'application/x-effectio-schedule-entry'
