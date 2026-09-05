@@ -636,6 +636,10 @@ export default function App() {
     setCalendarMode('month')
   }
 
+  function handleSelectYear(year: number) {
+    setViewDate((current) => new Date(year, current.getMonth(), 1))
+  }
+
   return (
     <div className="app">
       <Header
@@ -683,6 +687,7 @@ export default function App() {
                   onNext={handleCalendarNext}
                   onOpenYearView={handleOpenYearView}
                   onSelectMonth={handleSelectMonth}
+                  onSelectYear={handleSelectYear}
                   getProgress={getProgress}
                   onAdd={addTask}
                   onToggle={toggleTask}

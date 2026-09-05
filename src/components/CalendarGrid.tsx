@@ -1,3 +1,4 @@
+import { MONTH_BACKGROUNDS } from '../assets/months'
 import type { DayProgress } from '../types'
 import {
   MONTHS,
@@ -10,6 +11,7 @@ import {
 } from '../dates'
 import { ProgressRing } from './ProgressRing'
 import { Tooltip } from './Tooltip'
+import { YearPicker } from './YearPicker'
 
 export type CalendarMode = 'month' | 'year'
 
@@ -24,6 +26,7 @@ type CalendarGridProps = {
   onNext: () => void
   onOpenYearView: () => void
   onSelectMonth: (monthIndex: number) => void
+  onSelectYear: (year: number) => void
   getProgress: (date: Date) => DayProgress
 }
 
@@ -38,6 +41,7 @@ export function CalendarGrid({
   onNext,
   onOpenYearView,
   onSelectMonth,
+  onSelectYear,
   getProgress,
 }: CalendarGridProps) {
   const days = getCalendarDays(viewDate)
@@ -59,7 +63,7 @@ export function CalendarGrid({
         </Tooltip>
 
         {isYear ? (
-          <h2 className="calendar-title">{formatYearTitle(viewDate)}</h2>
+          <YearPicker year={viewDate.getFullYear()} onSelectYear={onSelectYear} />
         ) : (
           <Tooltip label="Show year view" placement="bottom">
             <button
@@ -102,7 +106,14 @@ export function CalendarGrid({
                   isViewMonth ? 'is-selected' : '',
                 ].join(' ')}
                 onClick={() => onSelectMonth(index)}
+                aria-label={`Open ${month} ${viewDate.getFullYear()}`}
               >
+                <img
+                  className="year-month-art"
+                  src={MONTH_BACKGROUNDS[index]}
+                  alt=""
+                  draggable={false}
+                />
                 <span className="year-month-name">{month}</span>
               </button>
             )

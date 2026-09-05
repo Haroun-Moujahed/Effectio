@@ -37,6 +37,86 @@
   letter-spacing: 0.02em;
 }
 
+.year-picker {
+  justify-self: center;
+}
+
+.year-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 96px;
+  padding: 6px 10px 6px 14px;
+  border: 2.5px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--nav-bg);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.year-picker-trigger:hover,
+.year-picker-trigger[aria-expanded="true"] {
+  background: var(--nav-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.year-picker-trigger svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.year-picker-menu {
+  z-index: 60;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+
+.year-picker-menu:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.year-picker-option {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.year-picker-option:hover {
+  background: var(--nav-hover);
+}
+
+.year-picker-option.is-selected {
+  background: var(--cell-selected);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .calendar-title-btn {
   justify-self: center;
   width: fit-content;
@@ -133,37 +213,83 @@
 }
 
 .year-month-cell {
+  position: relative;
   display: grid;
-  place-items: center;
+  place-items: end center;
   min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
   border: 2.5px solid var(--border);
   border-radius: 14px;
   background: var(--cell-bg);
-  color: var(--text);
+  color: #fff;
   transition:
-    background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    box-shadow 0.15s ease;
+}
+
+.year-month-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transform: scale(1.02);
+  transition: transform 0.35s ease;
+}
+
+.year-month-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 12, 20, 0.08) 35%,
+    rgba(8, 12, 20, 0.55) 78%,
+    rgba(8, 12, 20, 0.78) 100%
+  );
 }
 
 .year-month-cell:hover {
-  background: var(--cell-hover);
   border-color: var(--accent);
 }
 
+.year-month-cell:hover .year-month-art {
+  transform: scale(1.08);
+}
+
 .year-month-cell.is-current {
-  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(61, 158, 255, 0.35);
 }
 
 .year-month-cell.is-selected {
-  background: var(--cell-selected);
   border-color: var(--cell-selected-border);
+  box-shadow: 0 0 0 1px var(--cell-selected-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .year-month-art,
+  .year-month-cell:hover .year-month-art {
+    transform: none;
+    transition: none;
+  }
 }
 
 .year-month-name {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding: 10px 8px 12px;
   font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   font-weight: 600;
   letter-spacing: 0.02em;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
 }
 
 .day-cell {
@@ -217,6 +343,8 @@
 .task-action:focus-visible,
 .auth-eye:focus-visible,
 .calendar-title-btn:focus-visible,
+.year-picker-trigger:focus-visible,
+.year-picker-option:focus-visible,
 .year-month-cell:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

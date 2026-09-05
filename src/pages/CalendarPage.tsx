@@ -17,6 +17,7 @@ type CalendarPageProps = {
   onNext: () => void
   onOpenYearView: () => void
   onSelectMonth: (monthIndex: number) => void
+  onSelectYear: (year: number) => void
   getProgress: (date: Date) => DayProgress
   onAdd: (title: string) => void
   onToggle: (id: string, source: TaskSource) => void
@@ -49,6 +50,7 @@ export function CalendarPage({
   onNext,
   onOpenYearView,
   onSelectMonth,
+  onSelectYear,
   getProgress,
   onAdd,
   onToggle,
@@ -84,6 +86,7 @@ export function CalendarPage({
         onNext={onNext}
         onOpenYearView={onOpenYearView}
         onSelectMonth={onSelectMonth}
+        onSelectYear={onSelectYear}
         getProgress={getProgress}
       />
       <aside className={`tasks-panel ${tasksOpen ? 'is-open' : ''}`}>
