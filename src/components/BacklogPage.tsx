@@ -37,6 +37,7 @@ type BacklogPageProps = {
     section: 'active' | 'done',
   ) => void
   onClearAll: () => void
+  onClearChecked: () => void
 }
 
 export function BacklogPage({
@@ -49,12 +50,13 @@ export function BacklogPage({
   onUnassign,
   onReorder,
   onClearAll,
+  onClearChecked,
 }: BacklogPageProps) {
   const [draft, setDraft] = useState('')
   const [doneOpen, setDoneOpen] = useState(true)
   const [activeVisible, setActiveVisible] = useState(PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(PAGE_SIZE)
-  const [clearOpen, setClearOpen] = useState(false)
+  const [clearKind, setClearKind] = useState<'all' | 'checked' | null>(null)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [editMode, setEditMode] = useState<'edit' | 'view'>('edit')
   const [editTitle, setEditTitle] = useState('')
@@ -124,19 +126,19 @@ export function BacklogPage({
   }, [doneOpen, doneTasks.length, doneVisible])
 
   useEffect(() => {
-    if (!clearOpen) return
+    if (!clearKind) return
     clearConfirmRef.current?.focus()
 
     function onKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        setClearOpen(false)
+        setClearKind(null)
       }
     }
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [clearOpen])
+  }, [clearKind])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -191,16 +193,30 @@ export function BacklogPage({
           </p>
         </div>
         {tasks.length > 0 ? (
-          <Tooltip label="Clear all tasks" placement="bottom">
-            <button
-              type="button"
-              className="tasks-clear backlog-clear"
-              onClick={() => setClearOpen(true)}
-              aria-label="Clear all backlog tasks"
-            >
-              Clear all
-            </button>
-          </Tooltip>
+          <div className="backlog-header-actions">
+            {doneTasks.length > 0 ? (
+              <Tooltip label="Clear checked tasks" placement="bottom">
+                <button
+                  type="button"
+                  className="tasks-clear backlog-clear"
+                  onClick={() => setClearKind('checked')}
+                  aria-label="Clear checked backlog tasks"
+                >
+                  Clear checked
+                </button>
+              </Tooltip>
+            ) : null}
+            <Tooltip label="Clear all tasks" placement="bottom">
+              <button
+                type="button"
+                className="tasks-clear backlog-clear"
+                onClick={() => setClearKind('all')}
+                aria-label="Clear all backlog tasks"
+              >
+                Clear all
+              </button>
+            </Tooltip>
+          </div>
         ) : null}
       </div>
 
@@ -310,7 +326,7 @@ export function BacklogPage({
         ) : null}
       </div>
 
-      {clearOpen ? (
+      {clearKind ? (
         <div
           className="backlog-confirm"
           role="alertdialog"
@@ -319,17 +335,22 @@ export function BacklogPage({
           aria-describedby={clearDescId}
         >
           <h2 id={clearTitleId} className="tasks-confirm-title">
-            Clear all tasks?
+            {clearKind === 'checked' ? 'Clear checked tasks?' : 'Clear all tasks?'}
           </h2>
           <p id={clearDescId} className="tasks-confirm-description">
-            This will permanently remove all {tasks.length} task
-            {tasks.length === 1 ? '' : 's'} from your backlog.
+            {clearKind === 'checked'
+              ? `This will remove ${doneTasks.length} checked task${
+                  doneTasks.length === 1 ? '' : 's'
+                } from your backlog. Tasks assigned to days before today stay on the calendar so past progress is unchanged.`
+              : `This will permanently remove all ${tasks.length} task${
+                  tasks.length === 1 ? '' : 's'
+                } from your backlog. Tasks assigned to days before today stay on the calendar so past progress is unchanged.`}
           </p>
           <div className="tasks-confirm-actions">
             <button
               type="button"
               className="modal-btn modal-btn-secondary"
-              onClick={() => setClearOpen(false)}
+              onClick={() => setClearKind(null)}
             >
               Keep tasks
             </button>
@@ -338,11 +359,13 @@ export function BacklogPage({
               type="button"
               className="modal-btn modal-btn-primary is-danger"
               onClick={() => {
-                setClearOpen(false)
-                onClearAll()
+                const kind = clearKind
+                setClearKind(null)
+                if (kind === 'checked') onClearChecked()
+                else onClearAll()
               }}
             >
-              Clear all
+              {clearKind === 'checked' ? 'Clear checked' : 'Clear all'}
             </button>
           </div>
         </div>

@@ -84,6 +84,14 @@
   background: var(--nav-hover);
 }
 
+.backlog-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .backlog-clear {
   flex-shrink: 0;
 }

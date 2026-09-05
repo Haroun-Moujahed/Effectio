@@ -16,6 +16,7 @@ type BacklogRoutePageProps = {
     section: 'active' | 'done',
   ) => void
   onClearAll: () => void
+  onClearChecked: () => void
   onCloseTasks: () => void
 }
 
@@ -29,6 +30,7 @@ export function BacklogRoutePage({
   onUnassign,
   onReorder,
   onClearAll,
+  onClearChecked,
   onCloseTasks,
 }: BacklogRoutePageProps) {
   useEffect(() => {
@@ -46,6 +48,7 @@ export function BacklogRoutePage({
       onUnassign={onUnassign}
       onReorder={onReorder}
       onClearAll={onClearAll}
+      onClearChecked={onClearChecked}
     />
   )
 }

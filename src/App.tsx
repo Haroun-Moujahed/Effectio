@@ -26,7 +26,7 @@ import {
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { hideNativeSplash, useNativeBackButton } from './native'
 import { isSupabaseConfigured } from './lib/supabase'
-import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
+import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, removeBacklogTasks, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
 import type { DayTaskOrder, ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
 import { BootSkeleton } from './components/BootSkeleton'
 import './styles/index.css'
@@ -602,13 +602,33 @@ export default function App() {
     )
   }
 
+  function applyBacklogRemoval(ids: string[]) {
+    if (ids.length === 0) return
+    const todayKey = dateKey(today)
+    const next = removeBacklogTasks(ids, todayKey, {
+      byDate: tasksByDate,
+      backlog,
+      scheduleByDate,
+      dayTaskOrder,
+    })
+    setTasksByDate(next.byDate)
+    setBacklog(next.backlog)
+    setScheduleByDate(next.scheduleByDate)
+    setDayTaskOrder(next.dayTaskOrder)
+  }
+
   function deleteBacklogTask(id: string) {
-    purgeScheduleForTask(id, 'backlog')
-    setBacklog((current) => current.filter((task) => task.id !== id))
+    applyBacklogRemoval([id])
   }
 
   function clearAllBacklogTasks() {
-    setBacklog([])
+    applyBacklogRemoval(backlog.map((task) => task.id))
+  }
+
+  function clearCheckedBacklogTasks() {
+    applyBacklogRemoval(
+      backlog.filter((task) => task.completed).map((task) => task.id),
+    )
   }
 
   function assignBacklogTaskToDay(date: Date) {
@@ -780,6 +800,7 @@ export default function App() {
                   onUnassign={unassignBacklogTask}
                   onReorder={reorderBacklogTasks}
                   onClearAll={clearAllBacklogTasks}
+                  onClearChecked={clearCheckedBacklogTasks}
                   onCloseTasks={closeTasksPanel}
                 />
               }
