@@ -68,17 +68,10 @@ export function TaskEditModal({
 
   if (!open) return null
 
-  function htmlToPlainText(html: string) {
-    const node = document.createElement('div')
-    node.innerHTML = html
-    return (node.innerText || node.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
-  }
-
   async function copyDescription() {
-    const text = htmlToPlainText(description)
-    if (!text) return
+    if (!description.trim()) return
     try {
-      await navigator.clipboard.writeText(text)
+      await copyRichText(description)
       setCopied(true)
       window.clearTimeout(copyTimerRef.current)
       copyTimerRef.current = window.setTimeout(() => setCopied(false), 1600)
@@ -134,7 +127,8 @@ export function TaskEditModal({
                 onClick={() => void copyDescription()}
                 aria-label={copied ? 'Description copied' : 'Copy description'}
               >
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? <CheckIcon /> : <CopyIcon />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
               </button>
               <div
                 className="task-view-description rich-text-content"
@@ -204,4 +198,114 @@ export function TaskEditModal({
     </div>,
     document.body,
   )
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect
+        x="8"
+        y="8"
+        width="12"
+        height="14"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 12.5 9.5 17 19 7.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function htmlToPlainText(html: string) {
+  const node = document.createElement('div')
+  node.innerHTML = html
+  return (node.innerText || node.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function wrapClipboardHtml(html: string) {
+  return `<!DOCTYPE html><html><body><!--StartFragment-->${html}<!--EndFragment--></body></html>`
+}
+
+async function copyRichText(html: string) {
+  const plain = htmlToPlainText(html)
+  const clipboardHtml = wrapClipboardHtml(html)
+
+  try {
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([clipboardHtml], { type: 'text/html' }),
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+        }),
+      ])
+      return
+    }
+  } catch {
+    // Some browsers reject text/html on ClipboardItem; use the copy event instead.
+  }
+
+  if (copyHtmlWithCopyEvent(clipboardHtml, plain)) return
+
+  copyHtmlWithSelection(html)
+}
+
+function copyHtmlWithCopyEvent(html: string, plain: string) {
+  let copied = false
+
+  function onCopy(event: ClipboardEvent) {
+    event.clipboardData?.setData('text/html', html)
+    event.clipboardData?.setData('text/plain', plain)
+    event.preventDefault()
+    copied = true
+  }
+
+  document.addEventListener('copy', onCopy)
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.removeEventListener('copy', onCopy)
+  }
+
+  return copied
+}
+
+function copyHtmlWithSelection(html: string) {
+  const holder = document.createElement('div')
+  holder.contentEditable = 'true'
+  holder.innerHTML = html
+  holder.style.position = 'fixed'
+  holder.style.left = '-9999px'
+  document.body.append(holder)
+
+  const selection = window.getSelection()
+  const range = document.createRange()
+  range.selectNodeContents(holder)
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+  document.execCommand('copy')
+  selection?.removeAllRanges()
+  holder.remove()
 }

@@ -181,8 +181,11 @@
 .task-view-copy {
   position: absolute;
   top: 8px;
-  right: 8px;
+  right: 22px;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 28px;
   padding: 0 10px;
   border: 0;
@@ -196,6 +199,12 @@
   transition:
     background 0.15s ease,
     color 0.15s ease;
+}
+
+.task-view-copy svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .task-view-copy:hover {
