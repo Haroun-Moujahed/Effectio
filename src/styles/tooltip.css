@@ -8,6 +8,7 @@
 .tooltip-anchor:has(> .nav-btn),
 .tooltip-anchor:has(> .tasks-close),
 .tooltip-anchor:has(> .task-action),
+.tooltip-anchor:has(> .task-drag-handle),
 .tooltip-anchor:has(> .auth-eye) {
   line-height: 0;
 }

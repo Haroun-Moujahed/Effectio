@@ -1,0 +1,20 @@
+---
+description: Never use HTML title attributes; use the app Tooltip instead
+alwaysApply: true
+---
+
+# No HTML title attributes
+
+Never use the HTML `title` attribute for hover text, hints, or accessibility. Use the existing `Tooltip` component from `src/components/Tooltip.tsx`, and keep a real `aria-label` (or visible text) on the control.
+
+This does **not** ban React props named `title` (for example `title={editTitle}` on a task modal).
+
+```tsx
+// BAD
+<button title="Drag to reorder" aria-label="Reorder task" />
+
+// GOOD
+<Tooltip label="Drag to reorder" placement="top">
+  <button type="button" aria-label="Reorder task" />
+</Tooltip>
+```
