@@ -102,6 +102,10 @@ export function isDateKeyBefore(dateKeyValue: string, todayKey: string): boolean
   return dateKeyValue < todayKey
 }
 
+export function isDateKeyOnOrBefore(dateKeyValue: string, todayKey: string): boolean {
+  return dateKeyValue <= todayKey
+}
+
 export function toDetachedCalendarTask(task: Task): Task {
   return {
     id: task.id,
@@ -111,21 +115,99 @@ export function toDetachedCalendarTask(task: Task): Task {
   }
 }
 
-export function removeBacklogTasks(
-  ids: string[],
-  todayKey: string,
-  state: {
-    byDate: TasksByDate
-    backlog: Task[]
-    scheduleByDate: ScheduleByDate
-    dayTaskOrder: DayTaskOrder
-  },
-): {
+type TaskCollections = {
   byDate: TasksByDate
   backlog: Task[]
   scheduleByDate: ScheduleByDate
   dayTaskOrder: DayTaskOrder
-} {
+}
+
+function snapshotAssignedTask(task: Task): Task {
+  return {
+    ...toDetachedCalendarTask(task),
+    id: crypto.randomUUID(),
+  }
+}
+
+function keepAssignedDayCopy(
+  task: Task,
+  assigned: string,
+  byDate: TasksByDate,
+  scheduleByDate: ScheduleByDate,
+  dayTaskOrder: DayTaskOrder,
+) {
+  const copy = snapshotAssignedTask(task)
+  const existing = byDate[assigned] ?? []
+  byDate[assigned] = [...existing, copy]
+  const nextOrder = retargetOrderKey(
+    dayTaskOrder[assigned],
+    `backlog:${task.id}`,
+    `calendar:${copy.id}`,
+  )
+  if (nextOrder) dayTaskOrder[assigned] = nextOrder
+  const nextEntries = retargetScheduleEntries(
+    scheduleByDate[assigned],
+    { taskId: task.id, taskSource: 'backlog' },
+    { taskId: copy.id, taskSource: 'calendar' },
+  )
+  if (nextEntries) scheduleByDate[assigned] = nextEntries
+}
+
+function dropAssignedDay(
+  taskId: string,
+  assigned: string,
+  scheduleByDate: ScheduleByDate,
+  dayTaskOrder: DayTaskOrder,
+) {
+  const nextOrder = removeOrderKey(dayTaskOrder[assigned], `backlog:${taskId}`)
+  if (!nextOrder?.length) delete dayTaskOrder[assigned]
+  else dayTaskOrder[assigned] = nextOrder
+  purgeBacklogSchedule(scheduleByDate, taskId, assigned)
+}
+
+export function reassignBacklogTaskToDay(
+  taskId: string,
+  newDateKey: string,
+  todayKey: string,
+  state: TaskCollections,
+): TaskCollections {
+  const task = state.backlog.find((item) => item.id === taskId)
+  if (!task) return state
+
+  const oldKey = task.assignedDate
+  if (oldKey === newDateKey) return state
+
+  const byDate: TasksByDate = { ...state.byDate }
+  const scheduleByDate: ScheduleByDate = { ...state.scheduleByDate }
+  const dayTaskOrder: DayTaskOrder = { ...state.dayTaskOrder }
+
+  if (oldKey) {
+    if (isDateKeyOnOrBefore(oldKey, todayKey)) {
+      keepAssignedDayCopy(task, oldKey, byDate, scheduleByDate, dayTaskOrder)
+    } else {
+      dropAssignedDay(task.id, oldKey, scheduleByDate, dayTaskOrder)
+    }
+  }
+
+  for (const key of Object.keys(dayTaskOrder)) {
+    if (!dayTaskOrder[key]?.length) delete dayTaskOrder[key]
+  }
+
+  return {
+    byDate,
+    backlog: state.backlog.map((item) =>
+      item.id === taskId ? { ...item, assignedDate: newDateKey } : item,
+    ),
+    scheduleByDate,
+    dayTaskOrder,
+  }
+}
+
+export function removeBacklogTasks(
+  ids: string[],
+  todayKey: string,
+  state: TaskCollections,
+): TaskCollections {
   if (ids.length === 0) return state
 
   const idSet = new Set(ids)
@@ -148,26 +230,21 @@ export function removeBacklogTasks(
         `calendar:${task.id}`,
       )
       if (nextOrder) dayTaskOrder[assigned] = nextOrder
-      const nextEntries = retargetScheduleSource(
+      const nextEntries = retargetScheduleEntries(
         scheduleByDate[assigned],
-        task.id,
-        'backlog',
-        'calendar',
+        { taskId: task.id, taskSource: 'backlog' },
+        { taskId: task.id, taskSource: 'calendar' },
       )
       if (nextEntries) scheduleByDate[assigned] = nextEntries
       continue
     }
 
     if (assigned) {
-      const nextOrder = removeOrderKey(
-        dayTaskOrder[assigned],
-        `backlog:${task.id}`,
-      )
-      if (!nextOrder?.length) delete dayTaskOrder[assigned]
-      else dayTaskOrder[assigned] = nextOrder
+      dropAssignedDay(task.id, assigned, scheduleByDate, dayTaskOrder)
+      continue
     }
 
-    purgeBacklogSchedule(scheduleByDate, task.id, assigned)
+    purgeBacklogSchedule(scheduleByDate, task.id)
   }
 
   for (const key of Object.keys(dayTaskOrder)) {
@@ -199,16 +276,15 @@ function removeOrderKey(
   return order.filter((item) => item !== listKey)
 }
 
-function retargetScheduleSource(
+function retargetScheduleEntries(
   entries: ScheduleByDate[string] | undefined,
-  taskId: string,
-  fromSource: TaskSource,
-  toSource: TaskSource,
+  from: { taskId: string; taskSource: TaskSource },
+  to: { taskId: string; taskSource: TaskSource },
 ): ScheduleByDate[string] | undefined {
   if (!entries) return entries
   return entries.map((entry) =>
-    entry.taskId === taskId && entry.taskSource === fromSource
-      ? { ...entry, taskSource: toSource }
+    entry.taskId === from.taskId && entry.taskSource === from.taskSource
+      ? { ...entry, taskId: to.taskId, taskSource: to.taskSource }
       : entry,
   )
 }

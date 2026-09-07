@@ -26,7 +26,7 @@ import {
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
 import { hideNativeSplash, useNativeBackButton } from './native'
 import { isSupabaseConfigured } from './lib/supabase'
-import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, removeBacklogTasks, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
+import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, reassignBacklogTaskToDay, removeBacklogTasks, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
 import type { DayTaskOrder, ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
 import { BootSkeleton } from './components/BootSkeleton'
 import './styles/index.css'
@@ -633,18 +633,16 @@ export default function App() {
 
   function assignBacklogTaskToDay(date: Date) {
     if (!assignTaskId) return
-    const task = backlog.find((item) => item.id === assignTaskId)
-    if (!task) {
-      setAssignTaskId(null)
-      return
-    }
-
-    const key = dateKey(date)
-    setBacklog((current) =>
-      current.map((item) =>
-        item.id === assignTaskId ? { ...item, assignedDate: key } : item,
-      ),
-    )
+    const next = reassignBacklogTaskToDay(assignTaskId, dateKey(date), dateKey(today), {
+      byDate: tasksByDate,
+      backlog,
+      scheduleByDate,
+      dayTaskOrder,
+    })
+    setTasksByDate(next.byDate)
+    setBacklog(next.backlog)
+    setScheduleByDate(next.scheduleByDate)
+    setDayTaskOrder(next.dayTaskOrder)
     setAssignTaskId(null)
   }
 
