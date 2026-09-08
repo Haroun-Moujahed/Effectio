@@ -31,6 +31,33 @@ export async function hideNativeSplash(): Promise<void> {
   }
 }
 
+/** Fires when the app or tab becomes visible again (native resume + browser tab). */
+export function useAppForeground(onForeground: () => void): void {
+  const onForegroundRef = useRef(onForeground)
+  onForegroundRef.current = onForeground
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') onForegroundRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    let handle: { remove: () => Promise<void> } | undefined
+    if (isNativeApp()) {
+      void App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) onForegroundRef.current()
+      }).then((listener) => {
+        handle = listener
+      })
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      void handle?.remove()
+    }
+  }, [])
+}
+
 /** Returns true if the back press was consumed (overlay / panel closed). */
 export function useNativeBackButton(onDismissOverlay: () => boolean): void {
   const onDismissRef = useRef(onDismissOverlay)

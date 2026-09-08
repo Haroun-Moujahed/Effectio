@@ -15,18 +15,25 @@ export function useAuthSession() {
 
     let active = true
 
+    function applySession(nextSession: Session | null) {
+      setSession(nextSession)
+      setUser((prev) => {
+        const next = nextSession?.user ?? null
+        if (prev?.id === next?.id) return prev
+        return next
+      })
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
+      applySession(data.session)
       setReady(true)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setUser(nextSession?.user ?? null)
+      applySession(nextSession)
     })
 
     return () => {

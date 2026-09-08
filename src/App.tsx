@@ -19,15 +19,16 @@ import {
   hydrateTasks,
   loadLocalTasks,
   loadSidebarCollapsed,
+  persistSnapshot,
   saveCloudTasks,
   saveLocalTasks,
   saveSidebarCollapsed,
 } from './storage'
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme'
-import { hideNativeSplash, useNativeBackButton } from './native'
+import { hideNativeSplash, useAppForeground, useNativeBackButton } from './native'
 import { isSupabaseConfigured } from './lib/supabase'
 import { cloneTaskFrom, createTask, getProgressForDate, getTasksForDate, reassignBacklogTaskToDay, removeBacklogTasks, reorderFilteredByIds, reorderItems, taskListKey } from './tasks'
-import type { DayTaskOrder, ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
+import type { DayTaskOrder, PersistedTasks, ScheduleByDate, ScheduleEntry, Task, TaskSource, TasksByDate } from './types'
 import { BootSkeleton } from './components/BootSkeleton'
 import './styles/index.css'
 
@@ -50,6 +51,7 @@ function getUserDisplayName(user: {
 
 export default function App() {
   const { session, user, ready, signOut } = useAuthSession()
+  const userId = user?.id ?? null
   const today = useMemo(() => new Date(), [])
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
@@ -66,7 +68,10 @@ export default function App() {
   const [tasksReady, setTasksReady] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [assignTaskId, setAssignTaskId] = useState<string | null>(null)
-  const skipNextSave = useRef(true)
+  const lastAckedSnapshot = useRef<string | null>(null)
+  const cloudUpdatedAt = useRef<string | null>(null)
+  const saveGeneration = useRef(0)
+  const saveTimerRef = useRef<number | null>(null)
   const activeUserId = useRef<string | null>(null)
 
   const userName = getUserDisplayName(user)
@@ -88,6 +93,24 @@ export default function App() {
     return false
   })
 
+  const applyLoadedTasks = useCallback((tasks: PersistedTasks, updatedAt: string | null) => {
+    lastAckedSnapshot.current = persistSnapshot(tasks)
+    cloudUpdatedAt.current = updatedAt
+    setTasksByDate(tasks.byDate)
+    setBacklog(tasks.backlog)
+    setScheduleByDate(tasks.scheduleByDate)
+    setDayTaskOrder(tasks.dayTaskOrder)
+    setTasksReady(true)
+  }, [])
+
+  const invalidatePendingSaves = useCallback(() => {
+    saveGeneration.current += 1
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void hideNativeSplash()
@@ -104,17 +127,14 @@ export default function App() {
 
     if (!isSupabaseConfigured) {
       const local = loadLocalTasks()
-      setTasksByDate(local.byDate)
-      setBacklog(local.backlog)
-      setScheduleByDate(local.scheduleByDate)
-      setDayTaskOrder(local.dayTaskOrder)
-      setTasksReady(true)
-      skipNextSave.current = true
+      applyLoadedTasks(local, null)
       return
     }
 
-    if (!user) {
+    if (!userId) {
       activeUserId.current = null
+      lastAckedSnapshot.current = null
+      cloudUpdatedAt.current = null
       setTasksByDate({})
       setBacklog([])
       setScheduleByDate({})
@@ -124,8 +144,10 @@ export default function App() {
       return
     }
 
-    if (activeUserId.current !== user.id) {
-      activeUserId.current = user.id
+    if (activeUserId.current !== userId) {
+      activeUserId.current = userId
+      lastAckedSnapshot.current = null
+      cloudUpdatedAt.current = null
       setTasksByDate({})
       setBacklog([])
       setScheduleByDate({})
@@ -136,62 +158,92 @@ export default function App() {
 
     let cancelled = false
     setSyncError(null)
+    invalidatePendingSaves()
 
-    hydrateTasks(user.id)
-      .then((tasks) => {
-        if (cancelled || activeUserId.current !== user.id) return
-        skipNextSave.current = true
-        setTasksByDate(tasks.byDate)
-        setBacklog(tasks.backlog)
-        setScheduleByDate(tasks.scheduleByDate)
-        setDayTaskOrder(tasks.dayTaskOrder)
-        setTasksReady(true)
+    hydrateTasks(userId)
+      .then((record) => {
+        if (cancelled || activeUserId.current !== userId) return
+        applyLoadedTasks(record.tasks, record.updatedAt)
       })
       .catch((err) => {
-        if (cancelled || activeUserId.current !== user.id) return
+        if (cancelled || activeUserId.current !== userId) return
         setSyncError(err instanceof Error ? err.message : 'Failed to load tasks.')
-        skipNextSave.current = true
-        const local = loadLocalTasks(user.id)
-        setTasksByDate(local.byDate)
-        setBacklog(local.backlog)
-        setScheduleByDate(local.scheduleByDate)
-        setDayTaskOrder(local.dayTaskOrder)
-        setTasksReady(true)
+        const local = loadLocalTasks(userId)
+        applyLoadedTasks(local, cloudUpdatedAt.current)
       })
 
     return () => {
       cancelled = true
     }
-  }, [ready, user])
+  }, [ready, userId, applyLoadedTasks, invalidatePendingSaves])
 
   useEffect(() => {
     if (!tasksReady) return
 
-    const payload = { byDate: tasksByDate, backlog, scheduleByDate, dayTaskOrder }
+    const payload: PersistedTasks = { byDate: tasksByDate, backlog, scheduleByDate, dayTaskOrder }
 
-    if (isSupabaseConfigured && user) {
-      saveLocalTasks(payload, user.id)
+    if (isSupabaseConfigured && userId) {
+      saveLocalTasks(payload, userId)
     } else if (!isSupabaseConfigured) {
       saveLocalTasks(payload)
     }
 
-    if (skipNextSave.current) {
-      skipNextSave.current = false
-      return
-    }
+    const snapshot = persistSnapshot(payload)
+    if (snapshot === lastAckedSnapshot.current) return
+    if (!userId || !isSupabaseConfigured) return
 
-    if (!user || !isSupabaseConfigured) return
+    const expectedUpdatedAt = cloudUpdatedAt.current
+    const generation = saveGeneration.current
+    const uid = userId
 
-    const userId = user.id
-    const timer = window.setTimeout(() => {
-      if (activeUserId.current !== userId) return
-      saveCloudTasks(userId, payload).catch((err) => {
-        setSyncError(err instanceof Error ? err.message : 'Failed to save tasks.')
-      })
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null
+      if (activeUserId.current !== uid) return
+      if (generation !== saveGeneration.current) return
+      saveCloudTasks(uid, payload, expectedUpdatedAt)
+        .then((result) => {
+          if (generation !== saveGeneration.current || activeUserId.current !== uid) return
+          if (result.status === 'saved') {
+            lastAckedSnapshot.current = snapshot
+            cloudUpdatedAt.current = result.updatedAt
+            return
+          }
+          applyLoadedTasks(result.tasks, result.updatedAt)
+        })
+        .catch((err) => {
+          if (generation !== saveGeneration.current) return
+          setSyncError(err instanceof Error ? err.message : 'Failed to save tasks.')
+        })
     }, SAVE_DEBOUNCE_MS)
 
-    return () => window.clearTimeout(timer)
-  }, [tasksByDate, backlog, scheduleByDate, dayTaskOrder, tasksReady, user])
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [tasksByDate, backlog, scheduleByDate, dayTaskOrder, tasksReady, userId, applyLoadedTasks])
+
+  useAppForeground(() => {
+    if (!ready || !userId || !isSupabaseConfigured || !tasksReady) return
+
+    const payload: PersistedTasks = { byDate: tasksByDate, backlog, scheduleByDate, dayTaskOrder }
+    if (persistSnapshot(payload) !== lastAckedSnapshot.current) return
+
+    const uid = userId
+    invalidatePendingSaves()
+    const generation = saveGeneration.current
+
+    hydrateTasks(uid)
+      .then((record) => {
+        if (generation !== saveGeneration.current || activeUserId.current !== uid) return
+        applyLoadedTasks(record.tasks, record.updatedAt)
+      })
+      .catch((err) => {
+        if (generation !== saveGeneration.current) return
+        setSyncError(err instanceof Error ? err.message : 'Failed to load tasks.')
+      })
+  })
 
   useEffect(() => {
     applyTheme(theme)

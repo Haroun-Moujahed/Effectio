@@ -159,33 +159,103 @@ export function clearLocalTasks(userId?: string): void {
   localStorage.removeItem(STORAGE_PREFIX)
 }
 
-export async function loadCloudTasks(userId: string): Promise<PersistedTasks | null> {
+export type CloudTasksRecord = {
+  tasks: PersistedTasks
+  updatedAt: string | null
+}
+
+export type SaveCloudResult =
+  | { status: 'saved'; updatedAt: string }
+  | { status: 'conflict'; tasks: PersistedTasks; updatedAt: string }
+
+export function persistSnapshot(tasks: PersistedTasks): string {
+  return JSON.stringify(tasks)
+}
+
+export async function loadCloudTasks(userId: string): Promise<CloudTasksRecord | null> {
   if (!supabase) return null
 
   const { data, error } = await supabase
     .from('user_tasks')
-    .select('data')
+    .select('data, updated_at')
     .eq('user_id', userId)
     .maybeSingle()
 
   if (error) throw error
   if (!data) return null
-  return normalizePersistedTasks(data.data)
+  return {
+    tasks: normalizePersistedTasks(data.data),
+    updatedAt: typeof data.updated_at === 'string' ? data.updated_at : null,
+  }
 }
 
-export async function saveCloudTasks(userId: string, tasks: PersistedTasks): Promise<void> {
-  if (!supabase) return
+export async function saveCloudTasks(
+  userId: string,
+  tasks: PersistedTasks,
+  expectedUpdatedAt: string | null,
+): Promise<SaveCloudResult> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.')
+  }
 
-  const { error } = await supabase.from('user_tasks').upsert(
-    {
-      user_id: userId,
+  const nextUpdatedAt = new Date().toISOString()
+
+  if (expectedUpdatedAt === null) {
+    const { data, error } = await supabase
+      .from('user_tasks')
+      .insert({
+        user_id: userId,
+        data: tasks,
+        updated_at: nextUpdatedAt,
+      })
+      .select('data, updated_at')
+      .maybeSingle()
+
+    if (error) {
+      if (error.code === '23505') {
+        const latest = await loadCloudTasks(userId)
+        if (latest?.updatedAt) {
+          return { status: 'conflict', tasks: latest.tasks, updatedAt: latest.updatedAt }
+        }
+      }
+      throw error
+    }
+
+    return {
+      status: 'saved',
+      updatedAt: typeof data?.updated_at === 'string' ? data.updated_at : nextUpdatedAt,
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('user_tasks')
+    .update({
       data: tasks,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id' },
-  )
+      updated_at: nextUpdatedAt,
+    })
+    .eq('user_id', userId)
+    .eq('updated_at', expectedUpdatedAt)
+    .select('data, updated_at')
+    .maybeSingle()
 
   if (error) throw error
+
+  if (!data) {
+    const latest = await loadCloudTasks(userId)
+    if (!latest) {
+      return saveCloudTasks(userId, tasks, null)
+    }
+    return {
+      status: 'conflict',
+      tasks: latest.tasks,
+      updatedAt: latest.updatedAt ?? expectedUpdatedAt,
+    }
+  }
+
+  return {
+    status: 'saved',
+    updatedAt: typeof data.updated_at === 'string' ? data.updated_at : nextUpdatedAt,
+  }
 }
 
 function hasPersistedContent(tasks: PersistedTasks): boolean {
@@ -202,22 +272,27 @@ function hasPersistedContent(tasks: PersistedTasks): boolean {
  * Cloud is the source of truth. A per-user local cache is used for speed —
  * never shared across accounts.
  */
-export async function hydrateTasks(userId: string): Promise<PersistedTasks> {
+export async function hydrateTasks(userId: string): Promise<CloudTasksRecord> {
   const cloud = await loadCloudTasks(userId)
 
   if (cloud !== null) {
-    saveLocalTasks(cloud, userId)
+    saveLocalTasks(cloud.tasks, userId)
     return cloud
   }
 
   const cached = loadLocalTasks(userId)
   if (hasPersistedContent(cached)) {
-    await saveCloudTasks(userId, cached)
-    return cached
+    const saved = await saveCloudTasks(userId, cached, null)
+    if (saved.status === 'conflict') {
+      saveLocalTasks(saved.tasks, userId)
+      return { tasks: saved.tasks, updatedAt: saved.updatedAt }
+    }
+    saveLocalTasks(cached, userId)
+    return { tasks: cached, updatedAt: saved.updatedAt }
   }
 
   // Brand-new account: empty calendar (do not import another account's cache)
-  return emptyPersistedTasks()
+  return { tasks: emptyPersistedTasks(), updatedAt: null }
 }
 
 export function loadSidebarCollapsed(): boolean {
